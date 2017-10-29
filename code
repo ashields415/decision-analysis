@@ -42,15 +42,15 @@ data.dg$p.25 <- 0.25
 data.dg$p.75 <- 0.75
 data.dg$pi.25 <- piratio*pi75
 data.dg <- rename(data.dg, c('pi75'='pi.75'))
-rdata.dg <- reshape(data.dg, direction='long', 
+rdata.dg <- reshape(data.dg, direction='long',
 	varying=c('pi.25', 'pi.75', 'p.25', 'p.75'))
 rdata.dg <- rdata.dg[order(rdata.dg$Participant),]
 optim.dg <- ddply(rdata.dg, .(Participant), summarize,
-	gamma = optim(c(1,1), function(par) 
+	gamma = optim(c(1,1), function(par)
 	sum((pi -par[2]*p**par[1]/(par[2]*p**par[1] + (1-p)**par[1]))**2),
-	method= 'BFGS')$par[1], 
-	delta = optim(c(1,1), function(par) 
-	sum((pi -par[2]*p**par[1]/(par[2]*p**par[1] + (1-p)**par[1]))**2), 
+	method= 'BFGS')$par[1],
+	delta = optim(c(1,1), function(par)
+	sum((pi -par[2]*p**par[1]/(par[2]*p**par[1] + (1-p)**par[1]))**2),
 	method= 'BFGS')$par[2])
 data.clean2 <- merge(data.clean, optim.dg, by='Participant')
 detach(data.dg)
@@ -68,22 +68,22 @@ y1 <- c(-4, -4, -4, -4, -6, -6, -6, -7, -8, -8, -8, -8)
 y2 <- c(-21, -21, -21, -21, -21, -18, -15, -15, -14, -13, -12, -11)
 camla.data <- data.frame(Cam_SP, x1, y1, x2, y2)
 data2.ca <- merge(data.ca, camla.data, by='Cam_SP')
-camla_par <- ddply(data2.ca, .(Participant), summarize, 
-	lambda = optim(c(1), function(par) 
-	sum(((-par*(-y1)**sigma + wp_50*(x1**sigma + par*(-y1)**sigma)) - 
-	(-par*(-y2)**sigma + wp_50*(x2**sigma + par*(-y2)**sigma)))**2), 
+camla_par <- ddply(data2.ca, .(Participant), summarize,
+	lambda = optim(c(1), function(par)
+	sum(((-par*(-y1)**sigma + wp_50*(x1**sigma + par*(-y1)**sigma)) -
+	(-par*(-y2)**sigma + wp_50*(x2**sigma + par*(-y2)**sigma)))**2),
 	method= 'BFGS')$par[1])
 data.clean3 <- merge(data.clean2, camla_par, by='Participant')
 detach(data.clean2)
 
-#Perform transformations on 
+#Perform transformations on
 attach(data.mat)
 data.mat$M <- ifelse(is.na(data.mat$Round1.1), 2, 1)
 tdata.mat <- t(data.mat)
 mtdata.mat <- melt(tdata.mat, id=c('id', 'time'))
-mtdata.mat <- rename(mtdata.mat, c('Var1'='Round', 'Var2'='Participant', 
+mtdata.mat <- rename(mtdata.mat, c('Var1'='Round', 'Var2'='Participant',
 	'value'='Accept'))
-mtdata2.mat <- mtdata.mat[!((mtdata.mat$Round=='M') | 
+mtdata2.mat <- mtdata.mat[!((mtdata.mat$Round=='M') |
 	(mtdata.mat$Round=='Participant') ), ]
 mtdata2.mat <- mtdata2.mat[!is.na(mtdata2.mat$Accept),]
 labs <- c('Round1.1','Round1.2','Round1.3','Round1.4',
@@ -101,16 +101,16 @@ Round <- c('Round1.1','Round1.2','Round1.3','Round1.4',
 Gain <- c(10, 10, 10, 10, 20, 20, 20, 20, 30, 30, 30, 30, 40, 40, 40, 40)
 Gain <- rep(Gain, times=2)
 Loss <- c(-10, -20, -30, -40, -10, -20, -30, -40, -10, -20, -30, -40,
-	-10, -20, -30, -40, -5, -10, -15, -20, -5, -10, -15, -20, -5, -10, 
+	-10, -20, -30, -40, -5, -10, -15, -20, -5, -10, -15, -20, -5, -10,
 	-15, -20, -5, -10, -15, -20)
 matrix.data <- data.frame(Round, Gain, Loss)
 mtdata2.mat <- merge(mtdata2.mat, matrix.data, by='Round')
 mtdata2.mat <- mtdata2.mat[order(mtdata2.mat$Participant, mtdata2.mat$Round),]
 
 #Run Firth logistic regression to find Firth Ratios, etc
-firth <- ddply(mtdata2.mat, .(Participant), summarize, 
-	Int_Firth=logistf(Accept ~ Gain + Loss)$coef[1], 
-	Gain_Firth=logistf(Accept ~ Gain + Loss)$coef[2], 
+firth <- ddply(mtdata2.mat, .(Participant), summarize,
+	Int_Firth=logistf(Accept ~ Gain + Loss)$coef[1],
+	Gain_Firth=logistf(Accept ~ Gain + Loss)$coef[2],
 	Loss_Firth=logistf(Accept ~ Gain + Loss)$coef[3])
 data.clean4 <- merge(data.clean3, firth, by='Participant')
 detach(mtdata2.mat)
@@ -128,75 +128,79 @@ attach(data.clean5)
 setDF(data.clean5)
 sumvars <- c('sigma','gamma','delta','la.v1','Ratio_Firth')
 data.clean6 <- data.clean5[sumvars]
-sumstats <- basicStats(data.clean6)[c("Mean", "Median", "Stdev", 
+sumstats <- basicStats(data.clean6)[c("Mean", "Median", "Stdev",
 	"SE Mean", "nobs"),]
 flexstats <- FlexTable(sumstats,  header.columns = TRUE, add.rownames = TRUE,
-	body.cell.props = cellProperties(), 
-	body.par.props = parProperties(padding= 0), 
+	body.cell.props = cellProperties(),
+	body.par.props = parProperties(padding= 0),
 	body.text.props = textProperties(),
 	header.cell.props = cellProperties(),
 	header.par.props = parProperties(padding = 0),
 	header.text.props = textProperties(font.weight = "bold"))
 flexstats <- setZebraStyle(flexstats, odd = '#eeeeee', even = 'white')
-hist.sigma <- ggplot(data=data.clean5, aes(x=data.clean5$sigma)) + 
-	geom_histogram(breaks=seq(.2, 1.5, by=.1), 
-                 col="blue", 
-                 fill="red", 
-                 alpha = .5) + 
-	labs(title="Histogram Sigma", x="Sigma", y="Count") + 
+hist.sigma <- ggplot(data=data.clean5, aes(x=data.clean5$sigma)) +
+	geom_histogram(breaks=seq(.2, 1.5, by=.1),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram Sigma", x="Sigma", y="Count") +
 	xlim(c(.2,1.5)) +
 	scale_x_continuous(breaks = round(seq(min(sigma), max(sigma), by = 0.1),1))
-hist.gamma <- ggplot(data=data.clean5, aes(x=data.clean5$gamma)) + 
-	geom_histogram(breaks=seq(min(gamma), max(gamma), by=.1), 
-                 col="blue", 
-                 fill="red", 
-                 alpha = .5) + 
-	labs(title="Histogram Gamma", x="Gamma", y="Count") + 
+hist.gamma <- ggplot(data=data.clean5, aes(x=data.clean5$gamma)) +
+	geom_histogram(breaks=seq(min(gamma), max(gamma), by=.1),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram Gamma", x="Gamma", y="Count") +
 	xlim(c(min(gamma),max(gamma))) +
 	scale_x_continuous(breaks = round(seq(min(gamma), max(gamma), by = 0.1),1))
-hist.delta <- ggplot(data=data.clean5, aes(x=data.clean5$delta)) + 
-	geom_histogram(breaks=seq(min(delta), max(delta), by=.1), 
-                 col="blue", 
-                 fill="red", 
-                 alpha = .5) + 
-	labs(title="Histogram Delta", x="Delta", y="Count") + 
+hist.delta <- ggplot(data=data.clean5, aes(x=data.clean5$delta)) +
+	geom_histogram(breaks=seq(min(delta), max(delta), by=.1),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram Delta", x="Delta", y="Count") +
 	xlim(c(min(delta),max(delta))) +
 	scale_x_continuous(breaks = round(seq(min(delta), max(delta), by = 0.1),1))
-hist.la <- ggplot(data=data.clean5, aes(x=data.clean5$la.v1)) + 
-	geom_histogram(breaks=seq(.25, 5.25, by=.25), 
-                 col="blue", 
-                 fill="red", 
-                 alpha = .5) + 
-	labs(title="Histogram LA-V1", x="LA-V1", y="Count") + 
+hist.la <- ggplot(data=data.clean5, aes(x=data.clean5$la.v1)) +
+	geom_histogram(breaks=seq(.25, 5.25, by=.25),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram LA-V1", x="LA-V1", y="Count") +
 	xlim(c(.25, 5.25)) +
 	scale_x_continuous(breaks = round(seq(.25, 5.25, by = 0.25),1))
-hist.firthR <- ggplot(data=data.clean5, aes(x=data.clean5$Ratio_Firth)) + 
-	geom_histogram(breaks=seq(.25, 5.25, by=.25), 
-                 col="blue", 
-                 fill="red", 
-                 alpha = .5) + 
-	labs(title="Histogram Firth Ratio", x="Firth Ratio", y="Count") + 
+hist.firthR <- ggplot(data=data.clean5, aes(x=data.clean5$Ratio_Firth)) +
+	geom_histogram(breaks=seq(.25, 5.25, by=.25),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram Firth Ratio", x="Firth Ratio", y="Count") +
 	xlim(c(.25,5.25)) +
 	scale_x_continuous(breaks = round(seq(.25, 5.25, by = 0.25),1))
 
 #Create word doc of summary stats + histograms
 doc <- docx()
 doc <- addTitle(doc=doc, 'Summary Statisitcs and Histograms',leve=1)
-doc <- addFlexTable(doc=doc, flexstats, 
+doc <- addFlexTable(doc=doc, flexstats,
 	par.properties = parProperties(text.align = "center"))
 doc <- addPageBreak(doc)
-doc <- addPlot(doc = doc, fun = print, x = hist.sigma, vector.graphic = T, 
+doc <- addPlot(doc = doc, fun = print, x = hist.sigma, vector.graphic = T,
 	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
 doc <- addPageBreak(doc)
-doc <- addPlot(doc = doc, fun = print, x = hist.gamma, vector.graphic = T, 
+doc <- addPlot(doc = doc, fun = print, x = hist.gamma, vector.graphic = T,
 	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
 doc <- addPageBreak(doc)
-doc <- addPlot(doc = doc, fun = print, x = hist.delta, vector.graphic = T, 
+doc <- addPlot(doc = doc, fun = print, x = hist.delta, vector.graphic = T,
 	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
 doc <- addPageBreak(doc)
-doc <- addPlot(doc = doc, fun = print, x = hist.la, vector.graphic = T, 
+doc <- addPlot(doc = doc, fun = print, x = hist.la, vector.graphic = T,
 	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
 doc <- addPageBreak(doc)
-doc <- addPlot(doc = doc, fun = print, x = hist.firthR, vector.graphic = T, 
+doc <- addPlot(doc = doc, fun = print, x = hist.firthR, vector.graphic = T,
 	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
 writeDoc(doc, file = "C:/Users/andre/Desktop/test3.docx" )
+
+#Test1
+
+#Test2
