@@ -204,16 +204,6 @@ doc <- addPlot(doc = doc, fun = print, x = hist.firthR, vector.graphic = T,
 writeDoc(doc, file = "C:/Users/andre/Desktop/test3.docx" )
 
 #Correlation Tables
-correl <- corr.test(data.clean5, use = "pairwise", method="pearson", adjust="none", alpha=.05)
-rcorrdata <- data.frame(correl$r)
-rcorrdata$rn <- rownames(rcorrdata)
-pcorrdata <- data.frame(correl$p)
-pcorrdata$rn <- rownames(pcorrdata)
-ncorrdata <- data.frame(correl$n)
-ncorrdata$rn <- rownames(ncorrdata)
-corrall <- rbind(rcorrdata, pcorrdata)
-corrall <- corrall[order(corrall$rn),]
-
 corstarsl <- function(x){
   require(Hmisc)
   x <- as.matrix(x)
