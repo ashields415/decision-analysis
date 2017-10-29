@@ -8,6 +8,8 @@ library(ggplot2)
 library(rJava)
 library(ReporteRs)
 library(fBasics)
+library(xtable)
+library(Hmisc)
 
 #Load file
 fileload <- read.csv('C:/Users/andre/Desktop/Qualtrics_Test.csv', header = TRUE, sep = ",")
@@ -211,5 +213,27 @@ ncorrdata <- data.frame(correl$n)
 ncorrdata$rn <- rownames(ncorrdata)
 corrall <- rbind(rcorrdata, pcorrdata)
 corrall <- corrall[order(corrall$rn),]
+
+corstarsl <- function(x){
+  require(Hmisc)
+  x <- as.matrix(x)
+  R <- rcorr(x)$r
+  p <- rcorr(x)$P
+  ## define notions for significance levels; spacing is important.
+  mystars <- ifelse(p < .001, "***", ifelse(p < .01, "** ", ifelse(p < .05, "* ", " ")))
+  ## trunctuate the matrix that holds the correlations to two decimal
+  R <- format(round(cbind(rep(-1.11, ncol(x)), R), 3))[,-1]
+    ## build a new matrix that includes the correlations with their apropriate stars
+  Rnew <- matrix(paste(R, mystars, sep=""), ncol=ncol(x))
+  diag(Rnew) <- paste(diag(R), " ", sep="")
+  rownames(Rnew) <- colnames(x)
+  colnames(Rnew) <- paste(colnames(x), "", sep="")
+	## remove upper triangle
+	Rnew <- as.data.frame(Rnew)
+  ## remove last column and return the matrix (which is now a data frame)
+  Rnew <- cbind(Rnew[1:length(Rnew)-1])
+  return(Rnew)
+}
+corr.final <- corstarsl(data.clean5)
 setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
-write.csv(corrall, file="Corral_Test8.csv")
+write.csv(corr.final, file="Corral_Test7.csv")
