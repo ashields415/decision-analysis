@@ -1,3 +1,4 @@
+#Pull relevant libraries
 library(plyr)
 library(reshape2)
 library(logistf)
@@ -8,9 +9,11 @@ library(rJava)
 library(ReporteRs)
 library(fBasics)
 
+#Load file
 fileload <- read.csv('C:/Users/andre/Desktop/Qualtrics_Test.csv', header = TRUE, sep = ",")
 data.whole <- fileload
 
+#clean data
 keepvar <- c('Participant', 'Duration', 'Gender', 'Age', 'High_ed', 'piratio',
 	'pi75', 'sigma', 'la.v1', 'Cam_SP', 'Lottery', 'Invest', 'Inflation', 'Travel_Ins',
 	'Travel_Vac', 'Vac', 'Rec_Risk', 'Enjoy_Risk', 'Pain_Loss', 'Risk_Averse',
@@ -22,9 +25,9 @@ keepvar <- c('Participant', 'Duration', 'Gender', 'Age', 'High_ed', 'piratio',
 	'Round2.14','Round2.15','Round2.16')
 data.clean <- data.whole[keepvar]
 
+#create data subsets
 vardg <- c('Participant', 'piratio', 'pi75')
 data.dg <- data.clean[vardg]
-
 varmat <- c('Participant', 'Round1.1','Round1.2','Round1.3','Round1.4',
 	'Round1.5','Round1.6','Round1.7','Round1.8','Round1.9','Round1.10',
 	'Round1.11','Round1.12','Round1.13','Round1.14','Round1.15','Round1.16',
@@ -33,6 +36,7 @@ varmat <- c('Participant', 'Round1.1','Round1.2','Round1.3','Round1.4',
 	'Round2.13','Round2.14','Round2.15','Round2.16')
 data.mat <- data.clean[varmat]
 
+#Perform optim function to find delta/gamma
 attach(data.dg)
 data.dg$p.25 <- 0.25
 data.dg$p.75 <- 0.75
@@ -51,6 +55,7 @@ optim.dg <- ddply(rdata.dg, .(Participant), summarize,
 data.clean2 <- merge(data.clean, optim.dg, by='Participant')
 detach(data.dg)
 
+#Perform optim function to find Camerer LA parameters
 attach(data.clean2)
 varcm <- c('Participant', 'Cam_SP', 'sigma', 'gamma', 'delta')
 data.ca <- data.clean2[varcm]
@@ -71,6 +76,7 @@ camla_par <- ddply(data2.ca, .(Participant), summarize,
 data.clean3 <- merge(data.clean2, camla_par, by='Participant')
 detach(data.clean2)
 
+#Perform transformations on 
 attach(data.mat)
 data.mat$M <- ifelse(is.na(data.mat$Round1.1), 2, 1)
 tdata.mat <- t(data.mat)
@@ -100,6 +106,8 @@ Loss <- c(-10, -20, -30, -40, -10, -20, -30, -40, -10, -20, -30, -40,
 matrix.data <- data.frame(Round, Gain, Loss)
 mtdata2.mat <- merge(mtdata2.mat, matrix.data, by='Round')
 mtdata2.mat <- mtdata2.mat[order(mtdata2.mat$Participant, mtdata2.mat$Round),]
+
+#Run Firth logistic regression to find Firth Ratios, etc
 firth <- ddply(mtdata2.mat, .(Participant), summarize, 
 	Int_Firth=logistf(Accept ~ Gain + Loss)$coef[1], 
 	Gain_Firth=logistf(Accept ~ Gain + Loss)$coef[2], 
@@ -110,10 +118,12 @@ attach(data.clean4)
 data.clean4$Ratio_Firth <- Loss_Firth / Gain_Firth
 detach(data.clean4)
 
+#write cleaned excel file
 data.clean5 <- setDT(data.clean4)[ ,(Round):=NULL]
 setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
 write.csv(data.clean5, file="Qualtric_Test2.csv")
 
+#compute summary stats and plot histograms of key parameters
 attach(data.clean5)
 setDF(data.clean5)
 sumvars <- c('sigma','gamma','delta','la.v1','Ratio_Firth')
@@ -169,6 +179,7 @@ hist.firthR <- ggplot(data=data.clean5, aes(x=data.clean5$Ratio_Firth)) +
 	xlim(c(.25,5.25)) +
 	scale_x_continuous(breaks = round(seq(.25, 5.25, by = 0.25),1))
 
+#Create word doc of summary stats + histograms
 doc <- docx()
 doc <- addTitle(doc=doc, 'Summary Statisitcs and Histograms',leve=1)
 doc <- addFlexTable(doc=doc, flexstats, 
