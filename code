@@ -201,6 +201,15 @@ doc <- addPlot(doc = doc, fun = print, x = hist.firthR, vector.graphic = T,
 	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
 writeDoc(doc, file = "C:/Users/andre/Desktop/test3.docx" )
 
-#Test1
-
-#Test2
+#Correlation Tables
+correl <- corr.test(data.clean5, use = "pairwise", method="pearson", adjust="none", alpha=.05)
+rcorrdata <- data.frame(correl$r)
+rcorrdata$rn <- rownames(rcorrdata)
+pcorrdata <- data.frame(correl$p)
+pcorrdata$rn <- rownames(pcorrdata)
+ncorrdata <- data.frame(correl$n)
+ncorrdata$rn <- rownames(ncorrdata)
+corrall <- rbind(rcorrdata, pcorrdata)
+corrall <- corrall[order(corrall$rn),]
+setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
+write.csv(corrall, file="Corral_Test8.csv")
