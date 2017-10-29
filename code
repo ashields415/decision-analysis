@@ -15,6 +15,8 @@ library(Hmisc)
 fileload <- read.csv('C:/Users/andre/Desktop/Qualtrics_Test.csv', header = TRUE, sep = ",")
 data.whole <- fileload
 
+
+##NEW SECTION
 #clean data
 keepvar <- c('Participant', 'Duration', 'Gender', 'Age', 'High_ed', 'piratio',
 	'pi75', 'sigma', 'la.v1', 'Cam_SP', 'Lottery', 'Invest', 'Inflation', 'Travel_Ins',
@@ -38,6 +40,8 @@ varmat <- c('Participant', 'Round1.1','Round1.2','Round1.3','Round1.4',
 	'Round2.13','Round2.14','Round2.15','Round2.16')
 data.mat <- data.clean[varmat]
 
+
+##NEW SECTION
 #Perform optim function to find delta/gamma
 attach(data.dg)
 data.dg$p.25 <- 0.25
@@ -57,6 +61,8 @@ optim.dg <- ddply(rdata.dg, .(Participant), summarize,
 data.clean2 <- merge(data.clean, optim.dg, by='Participant')
 detach(data.dg)
 
+
+##NEW SECTION
 #Perform optim function to find Camerer LA parameters
 attach(data.clean2)
 varcm <- c('Participant', 'Cam_SP', 'sigma', 'gamma', 'delta')
@@ -78,6 +84,8 @@ camla_par <- ddply(data2.ca, .(Participant), summarize,
 data.clean3 <- merge(data.clean2, camla_par, by='Participant')
 detach(data.clean2)
 
+
+##NEW SECTION
 #Perform transformations on
 attach(data.mat)
 data.mat$M <- ifelse(is.na(data.mat$Round1.1), 2, 1)
@@ -120,11 +128,15 @@ attach(data.clean4)
 data.clean4$Ratio_Firth <- Loss_Firth / Gain_Firth
 detach(data.clean4)
 
+
+##NEW SECTION
 #write cleaned excel file
 data.clean5 <- setDT(data.clean4)[ ,(Round):=NULL]
 setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
-write.csv(data.clean5, file="Qualtric_Test2.csv")
+write.csv(data.clean5, file="Qualtric_Test1.csv")
 
+
+##NEW SECTION
 #compute summary stats and plot histograms of key parameters
 attach(data.clean5)
 setDF(data.clean5)
@@ -201,9 +213,16 @@ doc <- addPlot(doc = doc, fun = print, x = hist.la, vector.graphic = T,
 doc <- addPageBreak(doc)
 doc <- addPlot(doc = doc, fun = print, x = hist.firthR, vector.graphic = T,
 	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
-writeDoc(doc, file = "C:/Users/andre/Desktop/test3.docx" )
+writeDoc(doc, file = "C:/Users/andre/Desktop/test.docx" )
 
+##NEW SECTION
 #Correlation Tables
+data.clean6 <- data.clean5[c("sigma", "gamma", "delta", "la.v1", 'Int_Firth', 'Gain_Firth',
+	'Loss_Firth', 'Ratio_Firth', 'lambda', 'Gender', 'Age', 'High_ed',
+	'Duration', "Lottery", "Invest", "Inflation", "Travel_Ins", "Travel_Vac",
+	"Vac", "Rec_Risk", "Enjoy_Risk", "Pain_Loss", "Risk_Averse", "Afraid_Loss")]
+detach(data.clean5)
+attach(data.clean6)
 corstarsl <- function(x){
   require(Hmisc)
   x <- as.matrix(x)
