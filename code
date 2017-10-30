@@ -1,3 +1,18 @@
+#Load relevant libraries
+install.packages('Rcpp', dependencies=TRUE)
+install.packages('rJava', dependencies=TRUE)
+install.packages('ReporteRs', dependencies=TRUE)
+install.packages('ggplot2', dependencies=TRUE)
+install.packages('plyr', dependencies=TRUE)
+install.packages('reshape2', dependencies=TRUE)
+install.packages('logistf', dependencies=TRUE)
+install.packages('psych', dependencies=TRUE)
+install.packages('data.table', dependencies=TRUE)
+install.packages('fBasics', dependencies=TRUE)
+install.packages('xtable', dependencies=TRUE)
+install.packages('Hmisc', dependencies=TRUE)
+install.packages('rmarkdown', dependencies=TRUE)
+
 #Pull relevant libraries
 library(plyr)
 library(reshape2)
