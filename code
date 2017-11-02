@@ -26,6 +26,7 @@ library(fBasics)
 library(xtable)
 library(Hmisc)
 library(splines2)
+library(rmarkdown)
 
 #Load file
 fileload <- read.csv('C:/Users/andre/Desktop/Qualtrics_Test.csv', header = TRUE, sep = ",")
@@ -344,7 +345,7 @@ doc <- addPageBreak(doc)
 doc <- addPlot(doc = doc, fun = print, x = util.plot, vector.graphic = T,
 	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
 doc <- addPageBreak(doc)
-doc <- addPlot(doc = doc, fun = print, x = util.plot.smooth, vector.graphic = T,
+doc <- addPlot(doc = doc, fun = print, x = util.plot.smooth, 	vector.graphic = T,
 	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
 doc <- addPageBreak(doc)
 doc <- addPlot(doc = doc, fun = print, x = wp.plot, vector.graphic = T,
