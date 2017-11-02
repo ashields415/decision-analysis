@@ -142,14 +142,7 @@ detach(mtdata2.mat)
 attach(data.clean4)
 data.clean4$Ratio_Firth <- Loss_Firth / Gain_Firth
 detach(data.clean4)
-
-
-##NEW SECTION
-#write cleaned excel file
 data.clean5 <- setDT(data.clean4)[ ,(Round):=NULL]
-setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
-write.csv(data.clean5, file="Qualtric_Test1.csv")
-
 
 ##NEW SECTION
 #compute summary stats and plot histograms of key parameters
@@ -208,27 +201,6 @@ hist.firthR <- ggplot(data=data.clean5, aes(x=data.clean5$Ratio_Firth)) +
 	xlim(c(.25,5.25)) +
 	scale_x_continuous(breaks = round(seq(.25, 5.25, by = 0.25),1))
 
-#Create word doc of summary stats + histograms
-doc <- docx()
-doc <- addTitle(doc=doc, 'Summary Statisitcs and Histograms',leve=1)
-doc <- addFlexTable(doc=doc, flexstats,
-	par.properties = parProperties(text.align = "center"))
-doc <- addPageBreak(doc)
-doc <- addPlot(doc = doc, fun = print, x = hist.sigma, vector.graphic = T,
-	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
-doc <- addPageBreak(doc)
-doc <- addPlot(doc = doc, fun = print, x = hist.gamma, vector.graphic = T,
-	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
-doc <- addPageBreak(doc)
-doc <- addPlot(doc = doc, fun = print, x = hist.delta, vector.graphic = T,
-	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
-doc <- addPageBreak(doc)
-doc <- addPlot(doc = doc, fun = print, x = hist.la, vector.graphic = T,
-	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
-doc <- addPageBreak(doc)
-doc <- addPlot(doc = doc, fun = print, x = hist.firthR, vector.graphic = T,
-	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
-writeDoc(doc, file = "C:/Users/andre/Desktop/test.docx" )
 
 ##NEW SECTION
 #Correlation Tables
@@ -259,8 +231,7 @@ corstarsl <- function(x){
   return(Rnew)
 }
 corr.final <- corstarsl(data.clean5)
-setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
-write.csv(corr.final, file="Corral_Test7.csv")
+
 
 ##NEW SECTION
 #Median Plots
@@ -338,3 +309,46 @@ wp.plot.smooth <- ggplot(data=wp_spline_med, aes(x=x, y=y)) +
 	labs(y='Decision Weight')+
 	scale_colour_manual(name="Line Color",
   values=c(MedianData="blue", MeanData="red"))
+
+##NEW SECTION - EXPORTING OUTPUT
+#Write cleaned excel file
+setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
+write.csv(data.clean5, file="Qualtric_Test1.csv")
+
+#Write Correl
+setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
+write.csv(corr.final, file="Corral_Test.csv")
+
+#Create word doc of summary stats + histograms + Med Plots
+doc <- docx()
+doc <- addTitle(doc=doc, 'Summary Statisitcs and Histograms',leve=1)
+doc <- addFlexTable(doc=doc, flexstats,
+	par.properties = parProperties(text.align = "center"))
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.sigma, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.gamma, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.delta, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.la, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.firthR, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = util.plot, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = util.plot.smooth, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = wp.plot, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = wp.plot.smooth, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+writeDoc(doc, file = "C:/Users/andre/OneDrive/Documents/Research/Qualtrics/Summary_Test.docx" )
