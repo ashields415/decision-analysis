@@ -267,7 +267,7 @@ write.csv(corr.final, file="Corral_Test7.csv")
 medsig <- median(sigma)
 medgam <- median(gamma)
 meddelt <- median(delta)
-p <- c(.10, .25, .5, .75, .9)
+p <- c(0, .10, .25, .5, .75, .9, 1)
 data.wp <- data.table(p)
 data.wp$wp <- meddelt*p**medgam/(meddelt*p**medgam + (1-p)**medgam)
 wp.plot <- ggplot(data.wp, aes(x=p, y=wp)) +
