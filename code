@@ -267,9 +267,74 @@ write.csv(corr.final, file="Corral_Test7.csv")
 medsig <- median(sigma)
 medgam <- median(gamma)
 meddelt <- median(delta)
+meansig <- mean(sigma)
+meangam <- mean(gamma)
+meandelt <- mean(delta)
 p <- c(0, .10, .25, .5, .75, .9, 1)
-data.wp <- data.table(p)
-data.wp$wp <- meddelt*p**medgam/(meddelt*p**medgam + (1-p)**medgam)
-wp.plot <- ggplot(data.wp, aes(x=p, y=wp)) +
-	geom_line(color='blue') +
-  geom_point()
+x <- c(0, 100, 500, 2500, 10000)
+
+#Create Mean + Median Utility Curvature Tables
+data.utmed <- data.table(x)
+data.utmed$y <- x**medsig
+data.utmean <- data.table(x)
+data.utmean$y <- x**meansig
+
+#Create Mean + Median Probability Weighting Tables
+data.wpmed <- data.table(p)
+data.wpmed$wp <- meddelt*p**medgam/(meddelt*p**medgam + (1-p)**medgam)
+data.wpmean <- data.table(p)
+data.wpmean$wp <- meandelt*p**meangam/(meandelt*p**meangam + (1-p)**meangam)
+
+#Plots
+util.plot <- ggplot(data.utmed, aes(x=x, y=y)) +
+	geom_line(aes(color='MedianData'), size=1) +
+  geom_line(data=data.utmean, aes(color='MeanData'),size=1) +
+	geom_point() +
+	geom_point(data=data.utmean)+
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Utility Curve') +
+	labs(x= 'Probability') +
+	labs(y='Decision Weight')+
+	scale_colour_manual(name="Line Color",
+  values=c(MedianData="blue", MeanData="red"))
+
+wp.plot <- ggplot(data.wpmed, aes(x=p, y=wp)) +
+	geom_line(aes(color='MedianData'), size=1) +
+  	geom_line(data=data.wpmean, aes(color='MeanData'),size=1) +
+	geom_point() +
+	geom_point(data=data.wpmean)+
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Probability Weighting Curve')+
+	labs(x= 'Probability') +
+	labs(y='Decision Weight')+
+	scale_colour_manual(name="Line Color",
+    	values=c(MedianData="blue", MeanData="red"))
+
+#Smooth Plots
+ut_spline_med <- as.data.frame(spline(data.utmed$x, data.utmed$y))
+ut_spline_mean <- as.data.frame(spline(data.utmean$x, data.utmean$y))
+util.plot.smooth <- ggplot(data=ut_spline_med, aes(x=x, y=y)) +
+	geom_line(aes(color='MedianData'), size=1)+
+	geom_point()+
+	geom_line(data=ut_spline_mean, aes(color='MeanData'),size=1) +
+	geom_point(data=ut_spline_mean)+
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Utility Curve Smoothed') +
+	labs(x= 'Dollars') +
+	labs(y='Utility')+
+	scale_colour_manual(name="Line Color",
+  values=c(MedianData="blue", MeanData="red"))
+
+wp_spline_med <- as.data.frame(spline(data.wpmed$p, data.wpmed$wp))
+wp_spline_mean <- as.data.frame(spline(data.wpmean$p, data.wpmean$wp))
+wp.plot.smooth <- ggplot(data=wp_spline_med, aes(x=x, y=y)) +
+	geom_line(aes(color='MedianData'), size=1)+
+	geom_point()+
+	geom_line(data=wp_spline_mean, aes(color='MeanData'),size=1) +
+	geom_point(data=wp_spline_mean)+
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Probability Weighting Curve Smoothed') +
+	labs(x= 'Probability') +
+	labs(y='Decision Weight')+
+	scale_colour_manual(name="Line Color",
+  values=c(MedianData="blue", MeanData="red"))
