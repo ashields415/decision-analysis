@@ -12,7 +12,7 @@ install.packages('fBasics', dependencies=TRUE)
 install.packages('xtable', dependencies=TRUE)
 install.packages('Hmisc', dependencies=TRUE)
 install.packages('rmarkdown', dependencies=TRUE)
-install.packages('Stack',  dependencies=TRUE)
+
 
 #Pull relevant libraries
 library(plyr)
@@ -28,13 +28,6 @@ library(xtable)
 library(Hmisc)
 library(splines2)
 library(rmarkdown)
-library(installr)
-
-git clone https://github.com/jgm/pandoc
-cd pandoc
-git submodule update --init
-stack setup
-stack install
 
 
 #Load file
