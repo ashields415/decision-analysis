@@ -32,9 +32,7 @@ library(rmarkdown)
 fileload <- read.csv('C:/Users/andre/Desktop/Qualtrics_Test.csv', header = TRUE, sep = ",")
 data.whole <- fileload
 
-
-##NEW SECTION
-#clean data
+#Clean
 keepvar <- c('Participant', 'Duration', 'Gender', 'Age', 'High_ed', 'piratio',
 	'pi75', 'sigma', 'la.v1', 'Cam_SP', 'Lottery', 'Invest', 'Inflation', 'Travel_Ins',
 	'Travel_Vac', 'Vac', 'Rec_Risk', 'Enjoy_Risk', 'Pain_Loss', 'Risk_Averse',
@@ -46,9 +44,11 @@ keepvar <- c('Participant', 'Duration', 'Gender', 'Age', 'High_ed', 'piratio',
 	'Round2.14','Round2.15','Round2.16')
 data.clean <- data.whole[keepvar]
 
-#create data subsets
+#DeltaGamma
 vardg <- c('Participant', 'piratio', 'pi75')
 data.dg <- data.clean[vardg]
+
+#Matrix
 varmat <- c('Participant', 'Round1.1','Round1.2','Round1.3','Round1.4',
 	'Round1.5','Round1.6','Round1.7','Round1.8','Round1.9','Round1.10',
 	'Round1.11','Round1.12','Round1.13','Round1.14','Round1.15','Round1.16',
@@ -68,7 +68,7 @@ data.dg <- rename(data.dg, c('pi75'='pi.75'))
 rdata.dg <- reshape(data.dg, direction='long',
 	varying=c('pi.25', 'pi.75', 'p.25', 'p.75'))
 rdata.dg <- rdata.dg[order(rdata.dg$Participant),]
-optim.dg <- ddply(rdata.dg, .(Participant), summarize,
+optim.dg <- ddply(rdata.dg, .(Participant), plyr::summarize,
 	gamma = optim(c(1,1), function(par)
 	sum((pi -par[2]*p**par[1]/(par[2]*p**par[1] + (1-p)**par[1]))**2),
 	method= 'BFGS')$par[1],
@@ -93,7 +93,7 @@ y1 <- c(-4, -4, -4, -4, -6, -6, -6, -7, -8, -8, -8, -8)
 y2 <- c(-21, -21, -21, -21, -21, -18, -15, -15, -14, -13, -12, -11)
 camla.data <- data.frame(Cam_SP, x1, y1, x2, y2)
 data2.ca <- merge(data.ca, camla.data, by='Cam_SP')
-camla_par <- ddply(data2.ca, .(Participant), summarize,
+camla_par <- ddply(data2.ca, .(Participant), plyr::summarize,
 	lambda = optim(c(1), function(par)
 	sum(((-par*(-y1)**sigma + wp_50*(x1**sigma + par*(-y1)**sigma)) -
 	(-par*(-y2)**sigma + wp_50*(x2**sigma + par*(-y2)**sigma)))**2),
@@ -135,7 +135,7 @@ mtdata2.mat <- merge(mtdata2.mat, matrix.data, by='Round')
 mtdata2.mat <- mtdata2.mat[order(mtdata2.mat$Participant, mtdata2.mat$Round),]
 
 #Run Firth logistic regression to find Firth Ratios, etc
-firth <- ddply(mtdata2.mat, .(Participant), summarize,
+firth <- ddply(mtdata2.mat, .(Participant), plyr::summarize,
 	Int_Firth=logistf(Accept ~ Gain + Loss)$coef[1],
 	Gain_Firth=logistf(Accept ~ Gain + Loss)$coef[2],
 	Loss_Firth=logistf(Accept ~ Gain + Loss)$coef[3])
