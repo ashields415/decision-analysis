@@ -290,9 +290,7 @@ ut_spline_med <- as.data.frame(spline(data.utmed$x, data.utmed$y))
 ut_spline_mean <- as.data.frame(spline(data.utmean$x, data.utmean$y))
 util.plot.smooth <- ggplot(data=ut_spline_med, aes(x=x, y=y)) +
 	geom_line(aes(color='MedianData'), size=1)+
-	geom_point()+
 	geom_line(data=ut_spline_mean, aes(color='MeanData'),size=1) +
-	geom_point(data=ut_spline_mean)+
 	geom_abline(intercept = 0, slope = 1)+
 	ggtitle('Utility Curve Smoothed') +
 	labs(x= 'Dollars') +
@@ -304,9 +302,7 @@ wp_spline_med <- as.data.frame(spline(data.wpmed$p, data.wpmed$wp))
 wp_spline_mean <- as.data.frame(spline(data.wpmean$p, data.wpmean$wp))
 wp.plot.smooth <- ggplot(data=wp_spline_med, aes(x=x, y=y)) +
 	geom_line(aes(color='MedianData'), size=1)+
-	geom_point()+
 	geom_line(data=wp_spline_mean, aes(color='MeanData'),size=1) +
-	geom_point(data=wp_spline_mean)+
 	geom_abline(intercept = 0, slope = 1)+
 	ggtitle('Probability Weighting Curve Smoothed') +
 	labs(x= 'Probability') +
