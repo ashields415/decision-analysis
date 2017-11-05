@@ -245,6 +245,9 @@ meddelt <- median(delta)
 meansig <- mean(sigma)
 meangam <- mean(gamma)
 meandelt <- mean(delta)
+wgsig <- 0.49
+wgdelt <- 0.77
+wggam <- 0.44
 p <- c(0, .10, .25, .5, .75, .9, 1)
 x <- c(0, 100, 500, 2500, 10000)
 
@@ -253,66 +256,74 @@ data.utmed <- data.table(x)
 data.utmed$y <- x**medsig
 data.utmean <- data.table(x)
 data.utmean$y <- x**meansig
+data.utwg <- data.table(x)
+data.utwg$y <- x**wgsig
 
 #Create Mean + Median Probability Weighting Tables
 data.wpmed <- data.table(p)
 data.wpmed$wp <- meddelt*p**medgam/(meddelt*p**medgam + (1-p)**medgam)
 data.wpmean <- data.table(p)
 data.wpmean$wp <- meandelt*p**meangam/(meandelt*p**meangam + (1-p)**meangam)
+data.wpwg <- data.table(p)
+data.wpwg$wp <- wgdelt*p**wggam/(wgdelt*p**wggam + (1-p)**wggam)
 
 #Plots
 util.plot <- ggplot(data.utmed, aes(x=x, y=y)) +
 	geom_line(aes(color='MedianData'), size=1) +
   geom_line(data=data.utmean, aes(color='MeanData'),size=1) +
+	geom_line(data=data.utwg, aes(color='WGData'), size=1, linetype='dashed') +
 	geom_point() +
 	geom_point(data=data.utmean)+
+	geom_point(data=data.utwg)+
 	geom_abline(intercept = 0, slope = 1)+
 	ggtitle('Utility Curve') +
 	labs(x= 'Probability') +
 	labs(y='Decision Weight')+
 	scale_colour_manual(name="Line Color",
-  values=c(MedianData="blue", MeanData="red"))
+  values=c(MedianData="blue", MeanData="red", WGData='green'))
 
 wp.plot <- ggplot(data.wpmed, aes(x=p, y=wp)) +
 	geom_line(aes(color='MedianData'), size=1) +
-  	geom_line(data=data.wpmean, aes(color='MeanData'),size=1) +
+  geom_line(data=data.wpmean, aes(color='MeanData'),size=1) +
+	geom_line(data=data.wpwg, aes(color='WGData'), size=1, linetype='dashed') +
 	geom_point() +
 	geom_point(data=data.wpmean)+
+	geom_point(data=data.wpwg)+
 	geom_abline(intercept = 0, slope = 1)+
 	ggtitle('Probability Weighting Curve')+
 	labs(x= 'Probability') +
 	labs(y='Decision Weight')+
 	scale_colour_manual(name="Line Color",
-    	values=c(MedianData="blue", MeanData="red"))
+  values=c(MedianData="blue", MeanData="red", WGData='green'))
 
 #Smooth Plots
 ut_spline_med <- as.data.frame(spline(data.utmed$x, data.utmed$y))
 ut_spline_mean <- as.data.frame(spline(data.utmean$x, data.utmean$y))
+ut_spline_wg <- as.data.frame(spline(data.utwg$x, data.utwg$y))
 util.plot.smooth <- ggplot(data=ut_spline_med, aes(x=x, y=y)) +
-	geom_line(aes(color='MedianData'), size=1)+
-	geom_point()+
+	geom_line(aes(color='MedianData'), size=1) +
 	geom_line(data=ut_spline_mean, aes(color='MeanData'),size=1) +
-	geom_point(data=ut_spline_mean)+
+	geom_line(data=ut_spline_wg, aes(color='WGData'), size=1, linetype='dashed') +
 	geom_abline(intercept = 0, slope = 1)+
 	ggtitle('Utility Curve Smoothed') +
 	labs(x= 'Dollars') +
 	labs(y='Utility')+
 	scale_colour_manual(name="Line Color",
-  values=c(MedianData="blue", MeanData="red"))
+  values=c(MedianData="blue", MeanData="red", WGData='green'))
 
 wp_spline_med <- as.data.frame(spline(data.wpmed$p, data.wpmed$wp))
 wp_spline_mean <- as.data.frame(spline(data.wpmean$p, data.wpmean$wp))
+wp_spline_wg <- as.data.frame(spline(data.wpwg$p, data.wpwg$wp))
 wp.plot.smooth <- ggplot(data=wp_spline_med, aes(x=x, y=y)) +
 	geom_line(aes(color='MedianData'), size=1)+
-	geom_point()+
 	geom_line(data=wp_spline_mean, aes(color='MeanData'),size=1) +
-	geom_point(data=wp_spline_mean)+
+	geom_line(data=wp_spline_wg, aes(color='WGData'), size=1, linetype='dashed') +
 	geom_abline(intercept = 0, slope = 1)+
 	ggtitle('Probability Weighting Curve Smoothed') +
 	labs(x= 'Probability') +
 	labs(y='Decision Weight')+
 	scale_colour_manual(name="Line Color",
-  values=c(MedianData="blue", MeanData="red"))
+  values=c(MedianData="blue", MeanData="red", WGData='green'))
 
 ##NEW SECTION - EXPORTING OUTPUT
 #Write cleaned excel file
