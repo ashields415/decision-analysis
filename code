@@ -36,7 +36,7 @@ data.whole <- fileload
 
 #Clean
 keepvar <- c('Participant', 'Duration', 'Gender', 'Age', 'High_ed', 'piratio',
-	'pi75', 'sigma', 'la.v1', 'Cam_SP', 'Lottery', 'Invest', 'Inflation', 'Travel_Ins',
+	'pi75', 'sigma', 'la.v1', 'camSP', 'Lottery', 'Invest', 'Inflation', 'Travel_Ins',
 	'Travel_Vac', 'Vac', 'Rec_Risk', 'Enjoy_Risk', 'Pain_Loss', 'Risk_Averse',
 	'Afraid_Loss', 'Round1.1','Round1.2','Round1.3','Round1.4','Round1.5',
 	'Round1.6','Round1.7','Round1.8','Round1.9','Round1.10','Round1.11',
@@ -84,19 +84,19 @@ detach(data.dg)
 ##NEW SECTION
 #Perform optim function to find Camerer LA parameters
 attach(data.clean2)
-varcm <- c('Participant', 'Cam_SP', 'sigma', 'gamma', 'delta')
+varcm <- c('Participant', 'camSP', 'sigma', 'gamma', 'delta')
 data.ca <- data.clean2[varcm]
 data.ca$wp_50 <- delta*0.5**gamma/(delta*0.5**gamma + (1-0.5)**gamma)
-Cam_SP <- (1:12)
+camSP <- (1:12)
 x1 <- c(25, 16, 8, 4, 1, 1, 1, 1, 1, 1, 1, 1)
 x2 <- 30
 x2 <- rep(x2, times=12)
 y1 <- c(-4, -4, -4, -4, -6, -6, -6, -7, -8, -8, -8, -8)
 y2 <- c(-21, -21, -21, -21, -21, -18, -15, -15, -14, -13, -12, -11)
-camla.data <- data.frame(Cam_SP, x1, y1, x2, y2)
-data2.ca <- merge(data.ca, camla.data, by='Cam_SP')
+camla.data <- data.frame(camSP, x1, y1, x2, y2)
+data2.ca <- merge(data.ca, camla.data, by='camSP')
 camla_par <- ddply(data2.ca, .(Participant), plyr::summarize,
-	lambda = optim(c(1), function(par)
+	camla = optim(c(1), function(par)
 	sum(((-par*(-y1)**sigma + wp_50*(x1**sigma + par*(-y1)**sigma)) -
 	(-par*(-y2)**sigma + wp_50*(x2**sigma + par*(-y2)**sigma)))**2),
 	method= 'BFGS')$par[1])
@@ -209,7 +209,7 @@ hist.firthR <- ggplot(data=data.clean5, aes(x=data.clean5$Ratio_Firth)) +
 ##NEW SECTION
 #Correlation Tables
 data.clean6 <- data.clean5[c("sigma", "gamma", "delta", "la.v1", 'Int_Firth', 'Gain_Firth',
-	'Loss_Firth', 'Ratio_Firth', 'lambda', 'Gender', 'Age', 'High_ed',
+	'Loss_Firth', 'Ratio_Firth', 'camla', 'Gender', 'Age', 'High_ed',
 	'Duration', "Lottery", "Invest", "Inflation", "Travel_Ins", "Travel_Vac",
 	"Vac", "Rec_Risk", "Enjoy_Risk", "Pain_Loss", "Risk_Averse", "Afraid_Loss")]
 detach(data.clean5)
