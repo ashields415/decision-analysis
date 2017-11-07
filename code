@@ -31,12 +31,12 @@ library(rmarkdown)
 
 
 #Load file
-fileload <- read.csv('C:/Users/andre/Desktop/Test_Run.csv', header = TRUE, sep = ",")
+fileload <- read.csv('C:/Users/andre/Desktop/Test_Run2.csv', header = TRUE, sep = ",")
 data.whole <- fileload
 
 #Clean
 keepvar <- c('Participant', 'Duration', 'Gender', 'piratio',
-	'pi75', 'sigma', 'la.v1', 'mpiratio', 'mpi75', 'msigma', 'mla', 'Cam_SP',
+	'pi75', 'sigma', 'la.v1', 'mpiratio', 'mpi75', 'msigma', 'mla', 'camSP',
 	'Lottery', 'Invest', 'Inflation', 'Travel_Ins',	'Travel_Vac', 'Vac',
 	'Rec_Risk', 'Enjoy_Risk', 'Pain_Loss', 'Risk_Averse',
 	'Afraid_Loss', 'Round1.1','Round1.2','Round1.3','Round1.4','Round1.5',
@@ -51,6 +51,10 @@ data.clean <- data.whole[keepvar]
 vardg <- c('Participant', 'piratio', 'pi75')
 data.dg <- data.clean[vardg]
 
+#MedDeltaGamma
+mvardg <- c('Participant', 'mpiratio', 'mpi75')
+mdata.dg <- data.clean[mvardg]
+
 #Matrix
 varmat <- c('Participant', 'Round1.1','Round1.2','Round1.3','Round1.4',
 	'Round1.5','Round1.6','Round1.7','Round1.8','Round1.9','Round1.10',
@@ -59,10 +63,6 @@ varmat <- c('Participant', 'Round1.1','Round1.2','Round1.3','Round1.4',
 	'Round2.7','Round2.8','Round2.9','Round2.10','Round2.11','Round2.12',
 	'Round2.13','Round2.14','Round2.15','Round2.16')
 data.mat <- data.clean[varmat]
-
-#MedDeltaGamma
-mvardg <- c('Participant', 'mpiratio', 'mpi75')
-mdata.dg <- data.clean[mvardg]
 
 
 ##NEW SECTION
@@ -82,52 +82,52 @@ optim.dg <- ddply(rdata.dg, .(Participant), plyr::summarize,
 	delta = optim(c(1,1), function(par)
 	sum((pi -par[2]*p**par[1]/(par[2]*p**par[1] + (1-p)**par[1]))**2),
 	method= 'BFGS')$par[2])
-data.clean2 <- merge(data.clean, optim.dg, by='Participant')
+data.clean2 <- merge(data.clean, optim.dg, by='Participant', all.x = TRUE)
 detach(data.dg)
 
 
 ##NEW SECTION
 #Perform optim function to find delta/gamma
 attach(mdata.dg)
-data.dg$p.25 <- 0.25
-data.dg$p.75 <- 0.75
-data.dg$mpi.25 <- mpiratio*mpi75
+mdata.dg$p.25 <- 0.25
+mdata.dg$p.75 <- 0.75
+mdata.dg$mpi.25 <- mpiratio*mpi75
 mdata.dg <- rename(mdata.dg, c('mpi75'='mpi.75'))
 rmdata.dg <- reshape(mdata.dg, direction='long',
 	varying=c('mpi.25', 'mpi.75', 'p.25', 'p.75'))
-mrdata.dg <- mrdata.dg[order(mrdata.dg$Participant),]
-moptim.dg <- ddply(mrdata.dg, .(Participant), plyr::summarize,
+rmdata.dg <- rmdata.dg[order(rmdata.dg$Participant),]
+moptim.dg <- ddply(rmdata.dg, .(Participant), plyr::summarize,
 	mgamma = optim(c(1,1), function(par)
 	sum((mpi -par[2]*p**par[1]/(par[2]*p**par[1] + (1-p)**par[1]))**2),
 	method= 'BFGS')$par[1],
 	mdelta = optim(c(1,1), function(par)
 	sum((mpi -par[2]*p**par[1]/(par[2]*p**par[1] + (1-p)**par[1]))**2),
 	method= 'BFGS')$par[2])
-data.clean2 <- merge(data.clean, moptim.dg, by='Participant')
+data.clean3 <- merge(data.clean2, moptim.dg, by='Participant', all.x = TRUE)
 detach(mdata.dg)
 
 
 ##NEW SECTION
 #Perform optim function to find Camerer LA parameters
-attach(data.clean2)
-varcm <- c('Participant', 'Cam_SP', 'sigma', 'gamma', 'delta')
+attach(data.clean3)
+varcm <- c('Participant', 'camSP', 'sigma', 'gamma', 'delta')
 data.ca <- data.clean2[varcm]
 data.ca$wp_50 <- delta*0.5**gamma/(delta*0.5**gamma + (1-0.5)**gamma)
-Cam_SP <- (1:12)
+camSP <- (1:12)
 x1 <- c(25, 16, 8, 4, 1, 1, 1, 1, 1, 1, 1, 1)
 x2 <- 30
 x2 <- rep(x2, times=12)
 y1 <- c(-4, -4, -4, -4, -6, -6, -6, -7, -8, -8, -8, -8)
 y2 <- c(-21, -21, -21, -21, -21, -18, -15, -15, -14, -13, -12, -11)
-camla.data <- data.frame(Cam_SP, x1, y1, x2, y2)
-data2.ca <- merge(data.ca, camla.data, by='Cam_SP')
+camla.data <- data.frame(camSP, x1, y1, x2, y2)
+data2.ca <- merge(data.ca, camla.data, by='camSP')
 camla_par <- ddply(data2.ca, .(Participant), plyr::summarize,
-	lambda = optim(c(1), function(par)
+	camla = optim(c(1), function(par)
 	sum(((-par*(-y1)**sigma + wp_50*(x1**sigma + par*(-y1)**sigma)) -
 	(-par*(-y2)**sigma + wp_50*(x2**sigma + par*(-y2)**sigma)))**2),
 	method= 'BFGS')$par[1])
-data.clean3 <- merge(data.clean2, camla_par, by='Participant')
-detach(data.clean2)
+data.clean4 <- merge(data.clean3, camla_par, by='Participant', all.x = TRUE)
+detach(data.clean3)
 
 
 ##NEW SECTION
@@ -167,30 +167,42 @@ firth <- ddply(mtdata2.mat, .(Participant), plyr::summarize,
 	Int_Firth=logistf(Accept ~ Gain + Loss)$coef[1],
 	Gain_Firth=logistf(Accept ~ Gain + Loss)$coef[2],
 	Loss_Firth=logistf(Accept ~ Gain + Loss)$coef[3])
-data.clean4 <- merge(data.clean3, firth, by='Participant')
+data.clean5 <- merge(data.clean4, firth, by='Participant', all.x = TRUE)
 detach(mtdata2.mat)
-attach(data.clean4)
-data.clean4$Ratio_Firth <- Loss_Firth / Gain_Firth
-detach(data.clean4)
-data.clean5 <- setDT(data.clean4)[ ,(Round):=NULL]
+attach(data.clean5)
+data.clean5$Ratio_Firth <- Loss_Firth / Gain_Firth
+detach(data.clean5)
+data.clean6 <- setDT(data.clean5)[ ,(Round):=NULL]
 
 ##NEW SECTION
 #compute summary stats and plot histograms of key parameters
-attach(data.clean5)
-setDF(data.clean5)
-sumvars <- c('sigma','gamma','delta','la.v1','Ratio_Firth')
-data.clean6 <- data.clean5[sumvars]
-sumstats <- basicStats(data.clean6)[c("Mean", "Median", "Stdev",
+attach(data.clean6)
+setDF(data.clean6)
+sumvarsF <- c('sigma','gamma','delta','la.v1', 'Ratio_Firth')
+data.clean7 <- data.clean6[sumvarsF]
+sumstatsF <- basicStats(data.clean7)[c("Mean", "Median", "Stdev",
 	"SE Mean", "nobs"),]
-flexstats <- FlexTable(sumstats,  header.columns = TRUE, add.rownames = TRUE,
+sumvarsM <- c('msigma', 'mgamma', 'mdelta', 'mla')
+data.clean8 <- data.clean6[sumvarsM]
+sumstatsM <- basicStats(data.clean8)[c("Mean", "Median", "Stdev",
+	"SE Mean", "nobs"),]
+flexstatsF <- FlexTable(sumstatsF,  header.columns = TRUE, add.rownames = TRUE,
 	body.cell.props = cellProperties(),
 	body.par.props = parProperties(padding= 0),
 	body.text.props = textProperties(),
 	header.cell.props = cellProperties(),
 	header.par.props = parProperties(padding = 0),
 	header.text.props = textProperties(font.weight = "bold"))
-flexstats <- setZebraStyle(flexstats, odd = '#eeeeee', even = 'white')
-hist.sigma <- ggplot(data=data.clean5, aes(x=data.clean5$sigma)) +
+	flexstats <- setZebraStyle(flexstats, odd = '#eeeeee', even = 'white')
+flexstatsM <- FlexTable(sumstatsM,  header.columns = TRUE, add.rownames = TRUE,
+	body.cell.props = cellProperties(),
+	body.par.props = parProperties(padding= 0),
+	body.text.props = textProperties(),
+	header.cell.props = cellProperties(),
+	header.par.props = parProperties(padding = 0),
+	header.text.props = textProperties(font.weight = "bold"))
+	flexstats <- setZebraStyle(flexstats, odd = '#eeeeee', even = 'white')
+hist.sigma <- ggplot(data=data.clean6, aes(x=data.clean6$sigma)) +
 	geom_histogram(breaks=seq(.2, 1.5, by=.1),
                  col="blue",
                  fill="red",
@@ -198,7 +210,7 @@ hist.sigma <- ggplot(data=data.clean5, aes(x=data.clean5$sigma)) +
 	labs(title="Histogram Sigma", x="Sigma", y="Count") +
 	xlim(c(.2,1.5)) +
 	scale_x_continuous(breaks = round(seq(min(sigma), max(sigma), by = 0.1),1))
-hist.gamma <- ggplot(data=data.clean5, aes(x=data.clean5$gamma)) +
+hist.gamma <- ggplot(data=data.clean6, aes(x=data.clean6$gamma)) +
 	geom_histogram(breaks=seq(min(gamma), max(gamma), by=.1),
                  col="blue",
                  fill="red",
@@ -206,7 +218,7 @@ hist.gamma <- ggplot(data=data.clean5, aes(x=data.clean5$gamma)) +
 	labs(title="Histogram Gamma", x="Gamma", y="Count") +
 	xlim(c(min(gamma),max(gamma))) +
 	scale_x_continuous(breaks = round(seq(min(gamma), max(gamma), by = 0.1),1))
-hist.delta <- ggplot(data=data.clean5, aes(x=data.clean5$delta)) +
+hist.delta <- ggplot(data=data.clean6, aes(x=data.clean6$delta)) +
 	geom_histogram(breaks=seq(min(delta), max(delta), by=.1),
                  col="blue",
                  fill="red",
@@ -214,7 +226,7 @@ hist.delta <- ggplot(data=data.clean5, aes(x=data.clean5$delta)) +
 	labs(title="Histogram Delta", x="Delta", y="Count") +
 	xlim(c(min(delta),max(delta))) +
 	scale_x_continuous(breaks = round(seq(min(delta), max(delta), by = 0.1),1))
-hist.la <- ggplot(data=data.clean5, aes(x=data.clean5$la.v1)) +
+hist.la <- ggplot(data=data.clean6, aes(x=data.clean6$la.v1)) +
 	geom_histogram(breaks=seq(.25, 5.25, by=.25),
                  col="blue",
                  fill="red",
@@ -222,7 +234,7 @@ hist.la <- ggplot(data=data.clean5, aes(x=data.clean5$la.v1)) +
 	labs(title="Histogram LA-V1", x="LA-V1", y="Count") +
 	xlim(c(.25, 5.25)) +
 	scale_x_continuous(breaks = round(seq(.25, 5.25, by = 0.25),1))
-hist.firthR <- ggplot(data=data.clean5, aes(x=data.clean5$Ratio_Firth)) +
+hist.firthR <- ggplot(data=data.clean6, aes(x=data.clean6$Ratio_Firth)) +
 	geom_histogram(breaks=seq(.25, 5.25, by=.25),
                  col="blue",
                  fill="red",
@@ -230,7 +242,7 @@ hist.firthR <- ggplot(data=data.clean5, aes(x=data.clean5$Ratio_Firth)) +
 	labs(title="Histogram Firth Ratio", x="Firth Ratio", y="Count") +
 	xlim(c(.25,5.25)) +
 	scale_x_continuous(breaks = round(seq(.25, 5.25, by = 0.25),1))
-hist.msigma <- ggplot(data=data.clean5, aes(x=data.clean5$msigma)) +
+hist.msigma <- ggplot(data=data.clean6, aes(x=data.clean6$msigma)) +
 	geom_histogram(breaks=seq(.2, 1.5, by=.1),
 	               col="blue",
 	               fill="red",
@@ -238,7 +250,7 @@ hist.msigma <- ggplot(data=data.clean5, aes(x=data.clean5$msigma)) +
 	labs(title="Histogram mSigma", x="mSigma", y="Count") +
 	xlim(c(.2,1.5)) +
 	scale_x_continuous(breaks = round(seq(min(sigma), max(sigma), by = 0.1),1))
-hist.mgamma <- ggplot(data=data.clean5, aes(x=data.clean5$mgamma)) +
+hist.mgamma <- ggplot(data=data.clean6, aes(x=data.clean6$mgamma)) +
 	geom_histogram(breaks=seq(min(gamma), max(gamma), by=.1),
 	                col="blue",
 	                fill="red",
@@ -246,7 +258,7 @@ hist.mgamma <- ggplot(data=data.clean5, aes(x=data.clean5$mgamma)) +
 	labs(title="Histogram mGamma", x="mGamma", y="Count") +
 	xlim(c(min(gamma),max(gamma))) +
 	scale_x_continuous(breaks = round(seq(min(gamma), max(gamma), by = 0.1),1))
-hist.mdelta <- ggplot(data=data.clean5, aes(x=data.clean5$mdelta)) +
+hist.mdelta <- ggplot(data=data.clean6, aes(x=data.clean6$mdelta)) +
 	geom_histogram(breaks=seq(min(delta), max(delta), by=.1),
                  col="blue",
                  fill="red",
@@ -254,7 +266,7 @@ hist.mdelta <- ggplot(data=data.clean5, aes(x=data.clean5$mdelta)) +
 	labs(title="Histogram mDelta", x="mDelta", y="Count") +
 	xlim(c(min(delta),max(delta))) +
 	scale_x_continuous(breaks = round(seq(min(delta), max(delta), by = 0.1),1))
-hist.mla <- ggplot(data=data.clean5, aes(x=data.clean5$mla)) +
+hist.mla <- ggplot(data=data.clean6, aes(x=data.clean6$mla)) +
 	geom_histogram(breaks=seq(.25, 5.25, by=.25),
                  col="blue",
                  fill="red",
@@ -265,11 +277,11 @@ hist.mla <- ggplot(data=data.clean5, aes(x=data.clean5$mla)) +
 
 ##NEW SECTION
 #Correlation Tables
-data.clean6 <- data.clean5[c("sigma", "gamma", "delta", "la.v1", "msigma", "mgamma", "mdelta", "mla", 'Int_Firth', 'Gain_Firth',
+data.clean6 <- data.clean6[c("sigma", "gamma", "delta", "la.v1", "msigma", "mgamma", "mdelta", "mla", 'Int_Firth', 'Gain_Firth',
 	'Loss_Firth', 'Ratio_Firth', 'lambda', 'Gender', 'Age', 'High_ed',
 	'Duration', "Lottery", "Invest", "Inflation", "Travel_Ins", "Travel_Vac",
 	"Vac", "Rec_Risk", "Enjoy_Risk", "Pain_Loss", "Risk_Averse", "Afraid_Loss")]
-detach(data.clean5)
+detach(data.clean6)
 attach(data.clean6)
 corstarsl <- function(x){
   require(Hmisc)
@@ -291,7 +303,7 @@ corstarsl <- function(x){
   Rnew <- cbind(Rnew[1:length(Rnew)-1])
   return(Rnew)
 }
-corr.final <- corstarsl(data.clean5)
+corr.final <- corstarsl(data.clean6)
 
 
 ##NEW SECTION - Financial
@@ -368,7 +380,7 @@ wp.plot.smooth <- ggplot(data=wp_spline_med, aes(x=x, y=y)) +
   values=c(MedianData="blue", MeanData="red"))
 
 
-##NEW SECTION - Financial
+##NEW SECTION - Medical
 #Median Plots
 mmedsig <- median(msigma)
 mmedgam <- median(mgamma)
@@ -444,16 +456,18 @@ mwp.plot.smooth <- ggplot(data=mwp_spline_med, aes(x=x, y=y)) +
 ##NEW SECTION - EXPORTING OUTPUT
 #Write cleaned excel file
 setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
-write.csv(data.clean5, file="Qualtric_Test1.csv")
+write.csv(data.clean6, file="Qualtric_TestRun.csv")
 
 #Write Correl
 setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
-write.csv(corr.final, file="Corral_Test.csv")
+write.csv(corr.final, file="Corral_TestRun.csv")
 
 #Create word doc of summary stats + histograms + Med Plots
 doc <- docx()
 doc <- addTitle(doc=doc, 'Summary Statisitcs and Histograms',leve=1)
-doc <- addFlexTable(doc=doc, flexstats,
+doc <- addFlexTable(doc=doc, flexstatsF,
+	par.properties = parProperties(text.align = "center"))
+doc <- addFlexTable(doc=doc, flexstatsM,
 	par.properties = parProperties(text.align = "center"))
 doc <- addPageBreak(doc)
 doc <- addPlot(doc = doc, fun = print, x = hist.sigma, vector.graphic = T,
@@ -506,4 +520,4 @@ doc <- addPageBreak(doc)
 doc <- addPlot(doc = doc, fun = print, x = mwp.plot.smooth, vector.graphic = T,
 	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
 
-writeDoc(doc, file = "C:/Users/andre/OneDrive/Documents/Research/Qualtrics/Summary_Test.docx" )
+writeDoc(doc, file = "C:/Users/andre/OneDrive/Documents/Research/Qualtrics/Summary_TestRun.docx" )
