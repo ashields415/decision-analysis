@@ -209,7 +209,7 @@ hist.firthR <- ggplot(data=data.clean5, aes(x=data.clean5$Ratio_Firth)) +
 ##NEW SECTION
 #Correlation Tables
 data.clean6 <- data.clean5[c("sigma", "gamma", "delta", "la.v1", 'Int_Firth', 'Gain_Firth',
-	'Loss_Firth', 'Ratio_Firth', 'lambda', 'Gender', 'Age', 'High_ed',
+	'Loss_Firth', 'Ratio_Firth', 'camla', 'Gender', 'Age', 'High_ed',
 	'Duration', "Lottery", "Invest", "Inflation", "Travel_Ins", "Travel_Vac",
 	"Vac", "Rec_Risk", "Enjoy_Risk", "Pain_Loss", "Risk_Averse", "Afraid_Loss")]
 detach(data.clean5)
