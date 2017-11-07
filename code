@@ -36,8 +36,7 @@ data.whole <- fileload
 
 #Clean
 keepvar <- c('Participant', 'Duration', 'Gender', 'Age', 'High_ed', 'piratio',
-	'pi75', 'sigma', 'la.v1', 'Cam_SP', 'Lottery', 'Invest', 'Inflation', 'Travel_Ins',
-	'Travel_Vac', 'Vac', 'Rec_Risk', 'Enjoy_Risk', 'Pain_Loss', 'Risk_Averse',
+	'pi75', 'sigma', 'la.v1', 'mpiratio', 'mpi75', 'msigma', 'mla', 'Cam_SP', 'Lottery', 'Invest', 'Inflation', 'Travel_Ins',	'Travel_Vac', 'Vac', 'Rec_Risk', 'Enjoy_Risk', 'Pain_Loss', 'Risk_Averse',
 	'Afraid_Loss', 'Round1.1','Round1.2','Round1.3','Round1.4','Round1.5',
 	'Round1.6','Round1.7','Round1.8','Round1.9','Round1.10','Round1.11',
 	'Round1.12','Round1.13','Round1.14','Round1.15','Round1.16','Round2.1',
@@ -59,6 +58,10 @@ varmat <- c('Participant', 'Round1.1','Round1.2','Round1.3','Round1.4',
 	'Round2.13','Round2.14','Round2.15','Round2.16')
 data.mat <- data.clean[varmat]
 
+#MedDeltaGamma
+mvardg <- c('Participant', 'mpiratio', 'mpi75')
+mdata.dg <- data.clean[mvardg]
+
 
 ##NEW SECTION
 #Perform optim function to find delta/gamma
@@ -79,6 +82,27 @@ optim.dg <- ddply(rdata.dg, .(Participant), plyr::summarize,
 	method= 'BFGS')$par[2])
 data.clean2 <- merge(data.clean, optim.dg, by='Participant')
 detach(data.dg)
+
+
+##NEW SECTION
+#Perform optim function to find delta/gamma
+attach(mdata.dg)
+data.dg$p.25 <- 0.25
+data.dg$p.75 <- 0.75
+data.dg$mpi.25 <- mpiratio*mpi75
+mdata.dg <- rename(mdata.dg, c('mpi75'='mpi.75'))
+rmdata.dg <- reshape(mdata.dg, direction='long',
+	varying=c('mpi.25', 'mpi.75', 'p.25', 'p.75'))
+mrdata.dg <- mrdata.dg[order(mrdata.dg$Participant),]
+moptim.dg <- ddply(mrdata.dg, .(Participant), plyr::summarize,
+	mgamma = optim(c(1,1), function(par)
+	sum((mpi -par[2]*p**par[1]/(par[2]*p**par[1] + (1-p)**par[1]))**2),
+	method= 'BFGS')$par[1],
+	mdelta = optim(c(1,1), function(par)
+	sum((mpi -par[2]*p**par[1]/(par[2]*p**par[1] + (1-p)**par[1]))**2),
+	method= 'BFGS')$par[2])
+data.clean2 <- merge(data.clean, moptim.dg, by='Participant')
+detach(mdata.dg)
 
 
 ##NEW SECTION
