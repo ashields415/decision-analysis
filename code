@@ -228,11 +228,42 @@ hist.firthR <- ggplot(data=data.clean5, aes(x=data.clean5$Ratio_Firth)) +
 	labs(title="Histogram Firth Ratio", x="Firth Ratio", y="Count") +
 	xlim(c(.25,5.25)) +
 	scale_x_continuous(breaks = round(seq(.25, 5.25, by = 0.25),1))
-
+hist.msigma <- ggplot(data=data.clean5, aes(x=data.clean5$msigma)) +
+	geom_histogram(breaks=seq(.2, 1.5, by=.1),
+	               col="blue",
+	               fill="red",
+	               alpha = .5) +
+	labs(title="Histogram mSigma", x="mSigma", y="Count") +
+	xlim(c(.2,1.5)) +
+	scale_x_continuous(breaks = round(seq(min(sigma), max(sigma), by = 0.1),1))
+hist.mgamma <- ggplot(data=data.clean5, aes(x=data.clean5$mgamma)) +
+	geom_histogram(breaks=seq(min(gamma), max(gamma), by=.1),
+	                col="blue",
+	                fill="red",
+	                alpha = .5) +
+	labs(title="Histogram mGamma", x="mGamma", y="Count") +
+	xlim(c(min(gamma),max(gamma))) +
+	scale_x_continuous(breaks = round(seq(min(gamma), max(gamma), by = 0.1),1))
+hist.mdelta <- ggplot(data=data.clean5, aes(x=data.clean5$mdelta)) +
+	geom_histogram(breaks=seq(min(delta), max(delta), by=.1),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram mDelta", x="mDelta", y="Count") +
+	xlim(c(min(delta),max(delta))) +
+	scale_x_continuous(breaks = round(seq(min(delta), max(delta), by = 0.1),1))
+hist.mla <- ggplot(data=data.clean5, aes(x=data.clean5$mla)) +
+	geom_histogram(breaks=seq(.25, 5.25, by=.25),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram mLA", x="mLA", y="Count") +
+	xlim(c(.25, 5.25)) +
+	scale_x_continuous(breaks = round(seq(.25, 5.25, by = 0.25),1))
 
 ##NEW SECTION
 #Correlation Tables
-data.clean6 <- data.clean5[c("sigma", "gamma", "delta", "la.v1", 'Int_Firth', 'Gain_Firth',
+data.clean6 <- data.clean5[c("sigma", "gamma", "delta", "la.v1", "msigma", "mgamma", "mdelta", "mla", 'Int_Firth', 'Gain_Firth',
 	'Loss_Firth', 'Ratio_Firth', 'lambda', 'Gender', 'Age', 'High_ed',
 	'Duration', "Lottery", "Invest", "Inflation", "Travel_Ins", "Travel_Vac",
 	"Vac", "Rec_Risk", "Enjoy_Risk", "Pain_Loss", "Risk_Averse", "Afraid_Loss")]
@@ -359,6 +390,18 @@ doc <- addPlot(doc = doc, fun = print, x = hist.delta, vector.graphic = T,
 	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
 doc <- addPageBreak(doc)
 doc <- addPlot(doc = doc, fun = print, x = hist.la, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.msigma, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.mgamma, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.mdelta, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.mla, vector.graphic = T,
 	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
 doc <- addPageBreak(doc)
 doc <- addPlot(doc = doc, fun = print, x = hist.firthR, vector.graphic = T,
