@@ -31,12 +31,14 @@ library(rmarkdown)
 
 
 #Load file
-fileload <- read.csv('C:/Users/andre/Desktop/Qualtrics_Test.csv', header = TRUE, sep = ",")
+fileload <- read.csv('C:/Users/andre/Desktop/Test_Run.csv', header = TRUE, sep = ",")
 data.whole <- fileload
 
 #Clean
-keepvar <- c('Participant', 'Duration', 'Gender', 'Age', 'High_ed', 'piratio',
-	'pi75', 'sigma', 'la.v1', 'mpiratio', 'mpi75', 'msigma', 'mla', 'Cam_SP', 'Lottery', 'Invest', 'Inflation', 'Travel_Ins',	'Travel_Vac', 'Vac', 'Rec_Risk', 'Enjoy_Risk', 'Pain_Loss', 'Risk_Averse',
+keepvar <- c('Participant', 'Duration', 'Gender', 'piratio',
+	'pi75', 'sigma', 'la.v1', 'mpiratio', 'mpi75', 'msigma', 'mla', 'Cam_SP',
+	'Lottery', 'Invest', 'Inflation', 'Travel_Ins',	'Travel_Vac', 'Vac',
+	'Rec_Risk', 'Enjoy_Risk', 'Pain_Loss', 'Risk_Averse',
 	'Afraid_Loss', 'Round1.1','Round1.2','Round1.3','Round1.4','Round1.5',
 	'Round1.6','Round1.7','Round1.8','Round1.9','Round1.10','Round1.11',
 	'Round1.12','Round1.13','Round1.14','Round1.15','Round1.16','Round2.1',
@@ -292,7 +294,7 @@ corstarsl <- function(x){
 corr.final <- corstarsl(data.clean5)
 
 
-##NEW SECTION
+##NEW SECTION - Financial
 #Median Plots
 medsig <- median(sigma)
 medgam <- median(gamma)
@@ -365,6 +367,80 @@ wp.plot.smooth <- ggplot(data=wp_spline_med, aes(x=x, y=y)) +
 	scale_colour_manual(name="Line Color",
   values=c(MedianData="blue", MeanData="red"))
 
+
+##NEW SECTION - Financial
+#Median Plots
+mmedsig <- median(msigma)
+mmedgam <- median(mgamma)
+mmeddelt <- median(mdelta)
+mmeansig <- mean(msigma)
+mmeangam <- mean(mgamma)
+mmeandelt <- mean(mdelta)
+p <- c(0, .10, .25, .5, .75, .9, 1)
+x <- c(0, 100, 500, 2500, 10000)
+
+#Create Mean + Median Utility Curvature Tables
+data.mutmed <- data.table(x)
+data.mutmed$y <- x**mmedsig
+data.mutmean <- data.table(x)
+data.mutmean$y <- x**mmeansig
+
+#Create Mean + Median Probability Weighting Tables
+data.mwpmed <- data.table(p)
+data.mwpmed$wp <- mmeddelt*p**mmedgam/(mmeddelt*p**mmedgam + (1-p)**mmedgam)
+data.mwpmean <- data.table(p)
+data.mwpmean$wp <- mmeandelt*p**mmeangam/(mmeandelt*p**mmeangam + (1-p)**mmeangam)
+
+#Plots
+mutil.plot <- ggplot(data.mutmed, aes(x=x, y=y)) +
+	geom_line(aes(color='MedianData'), size=1) +
+  geom_line(data=data.mutmean, aes(color='MeanData'),size=1) +
+	geom_point() +
+	geom_point(data=data.mutmean)+
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Medical Utility Curve') +
+	labs(x= 'Probability') +
+	labs(y='Decision Weight')+
+	scale_colour_manual(name="Line Color",
+  values=c(MedianData="blue", MeanData="red"))
+
+mwp.plot <- ggplot(data.mwpmed, aes(x=p, y=wp)) +
+	geom_line(aes(color='MedianData'), size=1) +
+	geom_line(data=data.mwpmean, aes(color='MeanData'),size=1) +
+	geom_point() +
+	geom_point(data=data.mwpmean)+
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Medical Probability Weighting Curve')+
+	labs(x= 'Probability') +
+	labs(y='Decision Weight')+
+	scale_colour_manual(name="Line Color",
+    	values=c(MedianData="blue", MeanData="red"))
+
+#Smooth Plots
+mut_spline_med <- as.data.frame(spline(data.mutmed$x, data.mutmed$y))
+mut_spline_mean <- as.data.frame(spline(data.mutmean$x, data.mutmean$y))
+mutil.plot.smooth <- ggplot(data=mut_spline_med, aes(x=x, y=y)) +
+	geom_line(aes(color='MedianData'), size=1)+
+	geom_line(data=mut_spline_mean, aes(color='MeanData'),size=1) +
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Medical Utility Curve Smoothed') +
+	labs(x= 'Dollars') +
+	labs(y='Utility')+
+	scale_colour_manual(name="Line Color",
+  values=c(MedianData="blue", MeanData="red"))
+
+mwp_spline_med <- as.data.frame(spline(data.mwpmed$p, data.mwpmed$wp))
+mwp_spline_mean <- as.data.frame(spline(data.mwpmean$p, data.mwpmean$wp))
+mwp.plot.smooth <- ggplot(data=mwp_spline_med, aes(x=x, y=y)) +
+	geom_line(aes(color='MedianData'), size=1)+
+	geom_line(data=mwp_spline_mean, aes(color='MeanData'),size=1) +
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Medical Probability Weighting Curve Smoothed') +
+	labs(x= 'Probability') +
+	labs(y='Decision Weight')+
+	scale_colour_manual(name="Line Color",
+  values=c(MedianData="blue", MeanData="red"))
+
 ##NEW SECTION - EXPORTING OUTPUT
 #Write cleaned excel file
 setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
@@ -418,4 +494,16 @@ doc <- addPlot(doc = doc, fun = print, x = wp.plot, vector.graphic = T,
 doc <- addPageBreak(doc)
 doc <- addPlot(doc = doc, fun = print, x = wp.plot.smooth, vector.graphic = T,
 	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+	doc <- addPlot(doc = doc, fun = print, x = mutil.plot, vector.graphic = T,
+		fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = mutil.plot.smooth, 	vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = mwp.plot, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = mwp.plot.smooth, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+
 writeDoc(doc, file = "C:/Users/andre/OneDrive/Documents/Research/Qualtrics/Summary_Test.docx" )
