@@ -220,12 +220,12 @@ hist.firthR <- ggplot(data=data.clean5, aes(x=data.clean5$Ratio_Firth)) +
 
 ###############NEW SECTION
 #Correlation Tables
-data.clean6 <- data.clean5[c("sigma", "gamma", "delta", "la.v1", 'Int_Firth', 'Gain_Firth',
+data.corr <- data.clean5[c("sigma", "gamma", "delta", "la.v1", 'Int_Firth', 'Gain_Firth',
 	'Loss_Firth', 'Ratio_Firth', 'camla', 'Gender', 'Age', 'High_ed',
 	'Duration', "Lottery", "Invest", "Inflation", "Travel_Ins", "Travel_Vac",
 	"Vac", "Rec_Risk", "Enjoy_Risk", "Pain_Loss", "Risk_Averse", "Afraid_Loss")]
 detach(data.clean5)
-attach(data.clean6)
+attach(data.corr)
 corstarsl <- function(x){
   require(Hmisc)
   x <- as.matrix(x)
@@ -246,7 +246,15 @@ corstarsl <- function(x){
   Rnew <- cbind(Rnew[1:length(Rnew)-1])
   return(Rnew)
 }
-corr.final <- corstarsl(data.clean5)
+corr.final <- corstarsl(data.corr)
+
+flexcorrel <- FlexTable(corr.final,  header.columns = TRUE, add.rownames = TRUE,
+	body.cell.props = cellProperties(),
+	body.par.props = parProperties(padding= 0),
+	body.text.props = textProperties(),
+	header.cell.props = cellProperties(),
+	header.par.props = parProperties(padding = 0),
+	header.text.props = textProperties(font.weight = "bold"))
 
 
 ###############NEW SECTION
@@ -352,6 +360,9 @@ doc <- addPageBreak(doc)
 doc <- addPlot(doc = doc, fun = print, x = hist.firthR, vector.graphic = T,
 	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
 doc <- addPageBreak(doc)
+doc <- addFlexTable(doc=doc, flexcorrel,
+	par.properties = parProperties(text.align = "center"))
+	doc <- addPageBreak(doc)
 doc <- addPlot(doc = doc, fun = print, x = util.plot, vector.graphic = T,
 	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
 doc <- addPageBreak(doc)
