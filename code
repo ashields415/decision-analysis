@@ -60,7 +60,7 @@ varmat <- c('Participant', 'Round1.1','Round1.2','Round1.3','Round1.4',
 data.mat <- data.clean[varmat]
 
 
-##NEW SECTION
+###############NEW SECTION
 #Perform optim function to find delta/gamma
 attach(data.dg)
 data.dg$p.25 <- 0.25
@@ -81,7 +81,7 @@ data.clean2 <- merge(data.clean, optim.dg, by='Participant', all.x = TRUE)
 detach(data.dg)
 
 
-##NEW SECTION
+###############NEW SECTION
 #Perform optim function to find Camerer LA parameters
 attach(data.clean2)
 varcm <- c('Participant', 'camSP', 'sigma', 'gamma', 'delta')
@@ -104,7 +104,7 @@ data.clean3 <- merge(data.clean2, camla_par, by='Participant', all.x = TRUE)
 detach(data.clean2)
 
 
-##NEW SECTION
+###############NEW SECTION
 #Perform transformations on
 attach(data.mat)
 data.mat$M <- ifelse(is.na(data.mat$Round1.1), 2, 1)
@@ -148,6 +148,8 @@ data.clean4$Ratio_Firth <- Loss_Firth / Gain_Firth
 detach(data.clean4)
 data.clean5 <- setDT(data.clean4)[ ,(Round):=NULL]
 
+
+###############NEW SECTION
 #Create classification of 'extreme' labels and data sets
 attach(data.clean5)
 data.clean5$extrQ_all	<- ifelse(piratio==.1 & sigma==0.5 & pi75==0.2 & la.v1==5.01, '1', '0')
@@ -158,7 +160,7 @@ data.clean5$extrR_14	<- ifelse(piratio==.8 & la.v1==.25, '1', '0')
 data.extr1 <- data.clean5[!(extrQ_all==1 | extrR_all==1)]
 data.extr2 <- data.extr1[!(extrQ_14==1 | extrR_14==1)]
 
-##NEW SECTION
+###############NEW SECTION
 #compute summary stats and plot histograms of key parameters
 attach(data.clean5)
 setDF(data.clean5)
@@ -216,7 +218,7 @@ hist.firthR <- ggplot(data=data.clean5, aes(x=data.clean5$Ratio_Firth)) +
 	scale_x_continuous(breaks = round(seq(.25, 5.25, by = 0.25),1))
 
 
-##NEW SECTION
+###############NEW SECTION
 #Correlation Tables
 data.clean6 <- data.clean5[c("sigma", "gamma", "delta", "la.v1", 'Int_Firth', 'Gain_Firth',
 	'Loss_Firth', 'Ratio_Firth', 'camla', 'Gender', 'Age', 'High_ed',
@@ -247,7 +249,7 @@ corstarsl <- function(x){
 corr.final <- corstarsl(data.clean5)
 
 
-##NEW SECTION
+###############NEW SECTION
 #Median Plots
 medsig <- median(sigma)
 medgam <- median(gamma)
@@ -320,7 +322,7 @@ wp.plot.smooth <- ggplot(data=wp_spline_med, aes(x=x, y=y)) +
 	scale_colour_manual(name="Line Color",
   values=c(MedianData="blue", MeanData="red"))
 
-##NEW SECTION - EXPORTING OUTPUT
+###############NEW SECTION - EXPORTING OUTPUT
 #Write cleaned excel file
 setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
 write.csv(data.clean5, file="Qualtric_Test1.csv")
