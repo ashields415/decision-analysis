@@ -148,6 +148,16 @@ data.clean4$Ratio_Firth <- Loss_Firth / Gain_Firth
 detach(data.clean4)
 data.clean5 <- setDT(data.clean4)[ ,(Round):=NULL]
 
+#Create classification of 'extreme' labels and data sets
+attach(data.clean5)
+data.clean5$extrQ_all	<- ifelse(piratio==.1 & sigma==0.5 & pi75==0.2 & la.v1==5.01, '1', '0')
+data.clean5$extrQ_14	<- ifelse(piratio==.1 & la.v1==5.01, '1', '0')
+data.clean5$extrR_all	<- ifelse(piratio==.8 & sigma==1.4 & pi75==0.8 & la.v1==.25, '1', '0')
+data.clean5$extrR_14	<- ifelse(piratio==.8 & la.v1==.25, '1', '0')
+
+data.extr1 <- data.clean5[!(extrQ_all==1 | extrR_all==1)]
+data.extr2 <- data.extr1[!(extrQ_14==1 | extrR_14==1)]
+
 ##NEW SECTION
 #compute summary stats and plot histograms of key parameters
 attach(data.clean5)
