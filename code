@@ -65,7 +65,7 @@ varmat <- c('Participant', 'Round1.1','Round1.2','Round1.3','Round1.4',
 data.mat <- data.clean[varmat]
 
 
-##NEW SECTION
+###############NEW SECTION
 #Perform optim function to find delta/gamma
 attach(data.dg)
 data.dg$p.25 <- 0.25
@@ -86,7 +86,7 @@ data.clean2 <- merge(data.clean, optim.dg, by='Participant', all.x = TRUE)
 detach(data.dg)
 
 
-##NEW SECTION
+###############NEW SECTION
 #Perform optim function to find delta/gamma
 attach(mdata.dg)
 mdata.dg$p.25 <- 0.25
@@ -107,7 +107,7 @@ data.clean3 <- merge(data.clean2, moptim.dg, by='Participant', all.x = TRUE)
 detach(mdata.dg)
 
 
-##NEW SECTION
+###############NEW SECTION
 #Perform optim function to find Camerer LA parameters
 attach(data.clean3)
 varcm <- c('Participant', 'camSP', 'sigma', 'gamma', 'delta')
@@ -130,7 +130,7 @@ data.clean4 <- merge(data.clean3, camla_par, by='Participant', all.x = TRUE)
 detach(data.clean3)
 
 
-##NEW SECTION
+###############NEW SECTION
 #Perform transformations on
 attach(data.mat)
 data.mat$M <- ifelse(is.na(data.mat$Round1.1), 2, 1)
@@ -174,7 +174,23 @@ data.clean5$Ratio_Firth <- Loss_Firth / Gain_Firth
 detach(data.clean5)
 data.clean6 <- setDT(data.clean5)[ ,(Round):=NULL]
 
-##NEW SECTION
+
+###############NEW SECTION
+#Create classification of 'extreme' labels and data sets
+attach(data.clean6)
+data.clean6$extrQF_all	<- ifelse(piratio==.1 & sigma==0.5 & pi75==0.2 & la.v1==5.01, '1', '0')
+data.clean6$extrQF_14	<- ifelse(piratio==.1 & la.v1==5.01, '1', '0')
+data.clean6$extrRF_all	<- ifelse(piratio==.8 & sigma==1.4 & pi75==0.8 & la.v1==.25, '1', '0')
+data.clean6$extrRF_14	<- ifelse(piratio==.8 & la.v1==.25, '1', '0')
+data.clean6$extrQM_all	<- ifelse(mpiratio==.1 & msigma==0.5 & mpi75==0.2 & mla==5.01, '1', '0')
+data.clean6$extrQM_14	<- ifelse(mpiratio==.1 & mla==5.01, '1', '0')
+data.clean6$extrRM_all	<- ifelse(mpiratio==.8 & msigma==1.4 & mpi75==0.8 & mla==.25, '1', '0')
+data.clean6$extrRM_14	<- ifelse(mpiratio==.8 & mla==.25, '1', '0')
+
+data.extr1 <- data.clean5[!(extrQF_all==1 | extrRF_all==1 | extrQM_all==1 | extrRM_all==1)]
+data.extr2 <- data.extr1[!(extrQF_14==1 | extrRF_14==1 | extrQM_14==1 | extrRM_14==1)]
+
+###############NEW SECTION
 #compute summary stats and plot histograms of key parameters
 attach(data.clean6)
 setDF(data.clean6)
@@ -275,7 +291,8 @@ hist.mla <- ggplot(data=data.clean6, aes(x=data.clean6$mla)) +
 	xlim(c(.25, 5.25)) +
 	scale_x_continuous(breaks = round(seq(.25, 5.25, by = 0.25),1))
 
-##NEW SECTION
+
+###############NEW SECTION
 #Correlation Tables
 data.clean6 <- data.clean6[c("sigma", "gamma", "delta", "la.v1", "msigma", "mgamma", "mdelta", "mla", 'Int_Firth', 'Gain_Firth',
 	'Loss_Firth', 'Ratio_Firth', 'camla', 'Gender', 'Age', 'High_ed',
@@ -306,7 +323,7 @@ corstarsl <- function(x){
 corr.final <- corstarsl(data.clean6)
 
 
-##NEW SECTION - Financial
+###############NEW SECTION - Financial
 #Median Plots
 medsig <- median(sigma)
 medgam <- median(gamma)
@@ -380,7 +397,7 @@ wp.plot.smooth <- ggplot(data=wp_spline_med, aes(x=x, y=y)) +
   values=c(MedianData="blue", MeanData="red"))
 
 
-##NEW SECTION - Medical
+###############NEW SECTION - Medical
 #Median Plots
 mmedsig <- median(msigma)
 mmedgam <- median(mgamma)
@@ -453,7 +470,7 @@ mwp.plot.smooth <- ggplot(data=mwp_spline_med, aes(x=x, y=y)) +
 	scale_colour_manual(name="Line Color",
   values=c(MedianData="blue", MeanData="red"))
 
-##NEW SECTION - EXPORTING OUTPUT
+###############NEW SECTION - EXPORTING OUTPUT
 #Write cleaned excel file
 setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
 write.csv(data.clean6, file="Qualtric_TestRun.csv")
