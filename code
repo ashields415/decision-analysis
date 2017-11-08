@@ -549,7 +549,7 @@ writeDoc(doc, file = "C:/Users/andre/OneDrive/Documents/Research/Qualtrics/Summa
 #Create powerpoint of summary stats + histograms + Med Plots
 pdoc <- pptx(template="C:/Users/andre/OneDrive/Documents/Research/Presentation_Template.pptx")
 pdoc <- addSlide(pdoc, "Title Slide")
-pdoc <- addTitle(pdoc, "Prospect Theory and Decision Making", font.size=40 )
+pdoc <- addTitle(pdoc, "Prospect Theory / Decision Making")
 pdoc <- addSubtitle(pdoc, "Something About Money")
 pdoc <- addSlide(pdoc, "Comparison")
 pdoc <- addTitle(pdoc, "Summary Statistics")
@@ -603,7 +603,7 @@ pdoc <- addSlide(pdoc, "Title and Content")
 pdoc <- addTitle(pdoc, "Correlations")
 pdoc <- addPlot(pdoc, fun = print, x = flexcorrel, vector.graphic = T,
 	fontname_serif = "Arial", width = 5, height = 5, editable = TRUE)
-pdoc <- addSlide(pdoc, "Title Silde")
+pdoc <- addSlide(pdoc, "Title Slide")
 pdoc <- addTitle(pdoc, "La Fin")
 
 writeDoc(pdoc, file = "C:/Users/andre/OneDrive/Documents/Research/Qualtrics/Summary_TestRun.pptx" )
