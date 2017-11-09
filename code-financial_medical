@@ -1,1 +1,611 @@
+#Load relevant libraries
+install.packages('Rcpp', dependencies=TRUE)
+install.packages('rJava', dependencies=TRUE)
+install.packages('ReporteRs', dependencies=TRUE)
+install.packages('ggplot2', dependencies=TRUE)
+install.packages('plyr', dependencies=TRUE)
+install.packages('reshape2', dependencies=TRUE)
+install.packages('logistf', dependencies=TRUE)
+install.packages('psych', dependencies=TRUE)
+install.packages('data.table', dependencies=TRUE)
+install.packages('fBasics', dependencies=TRUE)
+install.packages('xtable', dependencies=TRUE)
+install.packages('Hmisc', dependencies=TRUE)
+install.packages('rmarkdown', dependencies=TRUE)
+
+
+#Pull relevant libraries
+library(plyr)
+library(reshape2)
+library(logistf)
+library(psych)
+library(data.table)
+library(ggplot2)
+library(rJava)
+library(ReporteRs)
+library(fBasics)
+library(xtable)
+library(Hmisc)
+library(splines2)
+library(rmarkdown)
+
+
+#Load file
+fileload <- read.csv('C:/Users/andre/Desktop/Test_Run2.csv', header = TRUE, sep = ",")
+data.whole <- fileload
+
+#Clean
+keepvar <- c('Participant', 'Duration', 'Gender', 'piratio',
+	'pi75', 'sigma', 'la.v1', 'mpiratio', 'mpi75', 'msigma', 'mla', 'camSP',
+	'Lottery', 'Invest', 'Inflation', 'Travel_Ins',	'Travel_Vac', 'Vac',
+	'Rec_Risk', 'Enjoy_Risk', 'Pain_Loss', 'Risk_Averse',
+	'Afraid_Loss', 'Round1.1','Round1.2','Round1.3','Round1.4','Round1.5',
+	'Round1.6','Round1.7','Round1.8','Round1.9','Round1.10','Round1.11',
+	'Round1.12','Round1.13','Round1.14','Round1.15','Round1.16','Round2.1',
+	'Round2.2','Round2.3','Round2.4','Round2.5','Round2.6','Round2.7',
+	'Round2.8','Round2.9','Round2.10','Round2.11','Round2.12','Round2.13',
+	'Round2.14','Round2.15','Round2.16')
+data.clean <- data.whole[keepvar]
+
+#DeltaGamma
+vardg <- c('Participant', 'piratio', 'pi75')
+data.dg <- data.clean[vardg]
+
+#MedDeltaGamma
+mvardg <- c('Participant', 'mpiratio', 'mpi75')
+mdata.dg <- data.clean[mvardg]
+
+#Matrix
+varmat <- c('Participant', 'Round1.1','Round1.2','Round1.3','Round1.4',
+	'Round1.5','Round1.6','Round1.7','Round1.8','Round1.9','Round1.10',
+	'Round1.11','Round1.12','Round1.13','Round1.14','Round1.15','Round1.16',
+	'Round2.1','Round2.2','Round2.3','Round2.4','Round2.5','Round2.6',
+	'Round2.7','Round2.8','Round2.9','Round2.10','Round2.11','Round2.12',
+	'Round2.13','Round2.14','Round2.15','Round2.16')
+data.mat <- data.clean[varmat]
+
+
+###############NEW SECTION
+#Perform optim function to find delta/gamma
+attach(data.dg)
+data.dg$p.25 <- 0.25
+data.dg$p.75 <- 0.75
+data.dg$pi.25 <- piratio*pi75
+data.dg <- rename(data.dg, c('pi75'='pi.75'))
+rdata.dg <- reshape(data.dg, direction='long',
+	varying=c('pi.25', 'pi.75', 'p.25', 'p.75'))
+rdata.dg <- rdata.dg[order(rdata.dg$Participant),]
+optim.dg <- ddply(rdata.dg, .(Participant), plyr::summarize,
+	gamma = optim(c(1,1), function(par)
+	sum((pi -par[2]*p**par[1]/(par[2]*p**par[1] + (1-p)**par[1]))**2),
+	method= 'BFGS')$par[1],
+	delta = optim(c(1,1), function(par)
+	sum((pi -par[2]*p**par[1]/(par[2]*p**par[1] + (1-p)**par[1]))**2),
+	method= 'BFGS')$par[2])
+data.clean2 <- merge(data.clean, optim.dg, by='Participant', all.x = TRUE)
+detach(data.dg)
+
+
+###############NEW SECTION
+#Perform optim function to find delta/gamma
+attach(mdata.dg)
+mdata.dg$p.25 <- 0.25
+mdata.dg$p.75 <- 0.75
+mdata.dg$mpi.25 <- mpiratio*mpi75
+mdata.dg <- rename(mdata.dg, c('mpi75'='mpi.75'))
+rmdata.dg <- reshape(mdata.dg, direction='long',
+	varying=c('mpi.25', 'mpi.75', 'p.25', 'p.75'))
+rmdata.dg <- rmdata.dg[order(rmdata.dg$Participant),]
+moptim.dg <- ddply(rmdata.dg, .(Participant), plyr::summarize,
+	mgamma = optim(c(1,1), function(par)
+	sum((mpi -par[2]*p**par[1]/(par[2]*p**par[1] + (1-p)**par[1]))**2),
+	method= 'BFGS')$par[1],
+	mdelta = optim(c(1,1), function(par)
+	sum((mpi -par[2]*p**par[1]/(par[2]*p**par[1] + (1-p)**par[1]))**2),
+	method= 'BFGS')$par[2])
+data.clean3 <- merge(data.clean2, moptim.dg, by='Participant', all.x = TRUE)
+detach(mdata.dg)
+
+
+###############NEW SECTION
+#Perform optim function to find Camerer LA parameters
+attach(data.clean3)
+varcm <- c('Participant', 'camSP', 'sigma', 'gamma', 'delta')
+data.ca <- data.clean2[varcm]
+data.ca$wp_50 <- delta*0.5**gamma/(delta*0.5**gamma + (1-0.5)**gamma)
+camSP <- (1:12)
+x1 <- c(25, 16, 8, 4, 1, 1, 1, 1, 1, 1, 1, 1)
+x2 <- 30
+x2 <- rep(x2, times=12)
+y1 <- c(-4, -4, -4, -4, -6, -6, -6, -7, -8, -8, -8, -8)
+y2 <- c(-21, -21, -21, -21, -21, -18, -15, -15, -14, -13, -12, -11)
+camla.data <- data.frame(camSP, x1, y1, x2, y2)
+data2.ca <- merge(data.ca, camla.data, by='camSP')
+camla_par <- ddply(data2.ca, .(Participant), plyr::summarize,
+	camla = optim(c(1), function(par)
+	sum(((-par*(-y1)**sigma + wp_50*(x1**sigma + par*(-y1)**sigma)) -
+	(-par*(-y2)**sigma + wp_50*(x2**sigma + par*(-y2)**sigma)))**2),
+	method= 'BFGS')$par[1])
+data.clean4 <- merge(data.clean3, camla_par, by='Participant', all.x = TRUE)
+detach(data.clean3)
+
+
+###############NEW SECTION
+#Perform transformations on
+attach(data.mat)
+data.mat$M <- ifelse(is.na(data.mat$Round1.1), 2, 1)
+tdata.mat <- t(data.mat)
+mtdata.mat <- melt(tdata.mat, id=c('id', 'time'))
+mtdata.mat <- rename(mtdata.mat, c('Var1'='Round', 'Var2'='Participant',
+	'value'='Accept'))
+mtdata2.mat <- mtdata.mat[!((mtdata.mat$Round=='M') |
+	(mtdata.mat$Round=='Participant') ), ]
+mtdata2.mat <- mtdata2.mat[!is.na(mtdata2.mat$Accept),]
+labs <- c('Round1.1','Round1.2','Round1.3','Round1.4',
+	'Round1.5','Round1.6','Round1.7','Round1.8','Round1.9','Round1.10',
+	'Round1.11','Round1.12','Round1.13','Round1.14','Round1.15','Round1.16')
+mtdata2.mat$Matrix <- ifelse(mtdata2.mat$Round==labs, 1, 2)
+detach(data.mat)
+attach(mtdata2.mat)
+Round <- c('Round1.1','Round1.2','Round1.3','Round1.4',
+	'Round1.5','Round1.6','Round1.7','Round1.8','Round1.9','Round1.10',
+	'Round1.11','Round1.12','Round1.13','Round1.14','Round1.15','Round1.16',
+	'Round2.1','Round2.2','Round2.3','Round2.4','Round2.5',
+	'Round2.6','Round2.7','Round2.8','Round2.9','Round2.10','Round2.11',
+	'Round2.12','Round2.13','Round2.14','Round2.15','Round2.16')
+Gain <- c(10, 10, 10, 10, 20, 20, 20, 20, 30, 30, 30, 30, 40, 40, 40, 40)
+Gain <- rep(Gain, times=2)
+Loss <- c(-10, -20, -30, -40, -10, -20, -30, -40, -10, -20, -30, -40,
+	-10, -20, -30, -40, -5, -10, -15, -20, -5, -10, -15, -20, -5, -10,
+	-15, -20, -5, -10, -15, -20)
+matrix.data <- data.frame(Round, Gain, Loss)
+mtdata2.mat <- merge(mtdata2.mat, matrix.data, by='Round')
+mtdata2.mat <- mtdata2.mat[order(mtdata2.mat$Participant, mtdata2.mat$Round),]
+
+#Run Firth logistic regression to find Firth Ratios, etc
+firth <- ddply(mtdata2.mat, .(Participant), plyr::summarize,
+	Int_Firth=logistf(Accept ~ Gain + Loss)$coef[1],
+	Gain_Firth=logistf(Accept ~ Gain + Loss)$coef[2],
+	Loss_Firth=logistf(Accept ~ Gain + Loss)$coef[3])
+data.clean5 <- merge(data.clean4, firth, by='Participant', all.x = TRUE)
+detach(mtdata2.mat)
+attach(data.clean5)
+data.clean5$Ratio_Firth <- Loss_Firth / Gain_Firth
+detach(data.clean5)
+data.clean6 <- setDT(data.clean5)[ ,(Round):=NULL]
+
+
+###############NEW SECTION
+#Create classification of 'extreme' labels and data sets
+attach(data.clean6)
+data.clean6$extrQF_all	<- ifelse(piratio==.1 & sigma==0.5 & pi75==0.2 & la.v1==5.01, '1', '0')
+data.clean6$extrQF_14	<- ifelse(piratio==.1 & la.v1==5.01, '1', '0')
+data.clean6$extrRF_all	<- ifelse(piratio==.8 & sigma==1.4 & pi75==0.8 & la.v1==.25, '1', '0')
+data.clean6$extrRF_14	<- ifelse(piratio==.8 & la.v1==.25, '1', '0')
+data.clean6$extrQM_all	<- ifelse(mpiratio==.1 & msigma==0.5 & mpi75==0.2 & mla==5.01, '1', '0')
+data.clean6$extrQM_14	<- ifelse(mpiratio==.1 & mla==5.01, '1', '0')
+data.clean6$extrRM_all	<- ifelse(mpiratio==.8 & msigma==1.4 & mpi75==0.8 & mla==.25, '1', '0')
+data.clean6$extrRM_14	<- ifelse(mpiratio==.8 & mla==.25, '1', '0')
+
+data.extr1 <- data.clean6[!(extrQF_all==1 | extrRF_all==1 | extrQM_all==1 | extrRM_all==1)]
+data.extr2 <- data.extr1[!(extrQF_14==1 | extrRF_14==1 | extrQM_14==1 | extrRM_14==1)]
+
+###############NEW SECTION
+#compute summary stats and plot histograms of key parameters
+attach(data.clean6)
+setDF(data.clean6)
+sumvarsF <- c('sigma','gamma','delta','la.v1', 'Ratio_Firth')
+data.clean7 <- data.clean6[sumvarsF]
+sumstatsF <- basicStats(data.clean7)[c("Mean", "Median", "Stdev",
+	"SE Mean", "nobs"),]
+sumvarsM <- c('msigma', 'mgamma', 'mdelta', 'mla')
+data.clean8 <- data.clean6[sumvarsM]
+sumstatsM <- basicStats(data.clean8)[c("Mean", "Median", "Stdev",
+	"SE Mean", "nobs"),]
+flexstatsF <- FlexTable(sumstatsF,  header.columns = TRUE, add.rownames = TRUE,
+	body.cell.props = cellProperties(),
+	body.par.props = parProperties(padding= 0),
+	body.text.props = textProperties(),
+	header.cell.props = cellProperties(),
+	header.par.props = parProperties(padding = 0),
+	header.text.props = textProperties(font.weight = "bold"))
+flexstatsF <- setZebraStyle(flexstatsF, odd = '#eeeeee', even = 'white')
+flexstatsM <- FlexTable(sumstatsM,  header.columns = TRUE, add.rownames = TRUE,
+	body.cell.props = cellProperties(),
+	body.par.props = parProperties(padding= 0),
+	body.text.props = textProperties(),
+	header.cell.props = cellProperties(),
+	header.par.props = parProperties(padding = 0),
+	header.text.props = textProperties(font.weight = "bold"))
+flexstatsM <- setZebraStyle(flexstatsM, odd = '#eeeeee', even = 'white')
+hist.sigma <- ggplot(data=data.clean6, aes(x=data.clean6$sigma)) +
+	geom_histogram(breaks=seq(.2, 1.5, by=.1),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram Sigma", x="Sigma", y="Count") +
+	xlim(c(.2,1.5)) +
+	scale_x_continuous(breaks = round(seq(min(sigma), max(sigma), by = 0.1),1))
+hist.gamma <- ggplot(data=data.clean6, aes(x=data.clean6$gamma)) +
+	geom_histogram(breaks=seq(min(gamma), max(gamma), by=.1),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram Gamma", x="Gamma", y="Count") +
+	xlim(c(min(gamma),max(gamma))) +
+	scale_x_continuous(breaks = round(seq(min(gamma), max(gamma), by = 0.1),1))
+hist.delta <- ggplot(data=data.clean6, aes(x=data.clean6$delta)) +
+	geom_histogram(breaks=seq(min(delta), max(delta), by=.1),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram Delta", x="Delta", y="Count") +
+	xlim(c(min(delta),max(delta))) +
+	scale_x_continuous(breaks = round(seq(min(delta), max(delta), by = 0.1),1))
+hist.la <- ggplot(data=data.clean6, aes(x=data.clean6$la.v1)) +
+	geom_histogram(breaks=seq(.25, 5.25, by=.25),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram LA-V1", x="LA-V1", y="Count") +
+	xlim(c(.25, 5.25)) +
+	scale_x_continuous(breaks = round(seq(.25, 5.25, by = 0.25),1))
+hist.firthR <- ggplot(data=data.clean6, aes(x=data.clean6$Ratio_Firth)) +
+	geom_histogram(breaks=seq(.25, 5.25, by=.25),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram Firth Ratio", x="Firth Ratio", y="Count") +
+	xlim(c(.25,5.25)) +
+	scale_x_continuous(breaks = round(seq(.25, 5.25, by = 0.25),1))
+hist.msigma <- ggplot(data=data.clean6, aes(x=data.clean6$msigma)) +
+	geom_histogram(breaks=seq(.2, 1.5, by=.1),
+	               col="blue",
+	               fill="red",
+	               alpha = .5) +
+	labs(title="Histogram mSigma", x="mSigma", y="Count") +
+	xlim(c(.2,1.5)) +
+	scale_x_continuous(breaks = round(seq(min(sigma), max(sigma), by = 0.1),1))
+hist.mgamma <- ggplot(data=data.clean6, aes(x=data.clean6$mgamma)) +
+	geom_histogram(breaks=seq(min(gamma), max(gamma), by=.1),
+	                col="blue",
+	                fill="red",
+	                alpha = .5) +
+	labs(title="Histogram mGamma", x="mGamma", y="Count") +
+	xlim(c(min(gamma),max(gamma))) +
+	scale_x_continuous(breaks = round(seq(min(gamma), max(gamma), by = 0.1),1))
+hist.mdelta <- ggplot(data=data.clean6, aes(x=data.clean6$mdelta)) +
+	geom_histogram(breaks=seq(min(delta), max(delta), by=.1),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram mDelta", x="mDelta", y="Count") +
+	xlim(c(min(delta),max(delta))) +
+	scale_x_continuous(breaks = round(seq(min(delta), max(delta), by = 0.1),1))
+hist.mla <- ggplot(data=data.clean6, aes(x=data.clean6$mla)) +
+	geom_histogram(breaks=seq(.25, 5.25, by=.25),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram mLA", x="mLA", y="Count") +
+	xlim(c(.25, 5.25)) +
+	scale_x_continuous(breaks = round(seq(.25, 5.25, by = 0.25),1))
+
+
+###############NEW SECTION
+#Correlation Tables
+data.corr <- data.clean6[c("sigma", "gamma", "delta", "la.v1", "msigma", "mgamma", "mdelta", "mla", 'Int_Firth', 'Gain_Firth',
+	'Loss_Firth', 'Ratio_Firth', 'camla', 'Gender', 'Age', 'High_ed',
+	'Duration', "Lottery", "Invest", "Inflation", "Travel_Ins", "Travel_Vac",
+	"Vac", "Rec_Risk", "Enjoy_Risk", "Pain_Loss", "Risk_Averse", "Afraid_Loss")]
+detach(data.clean6)
+attach(data.corr)
+corstarsl <- function(x){
+  require(Hmisc)
+  x <- as.matrix(x)
+  R <- rcorr(x)$r
+  p <- rcorr(x)$P
+  ## define notions for significance levels; spacing is important.
+  mystars <- ifelse(p < .001, "***", ifelse(p < .01, "** ", ifelse(p < .05, "* ", " ")))
+  ## trunctuate the matrix that holds the correlations to two decimal
+  R <- format(round(cbind(rep(-1.11, ncol(x)), R), 3))[,-1]
+    ## build a new matrix that includes the correlations with their apropriate stars
+  Rnew <- matrix(paste(R, mystars, sep=""), ncol=ncol(x))
+  diag(Rnew) <- paste(diag(R), " ", sep="")
+  rownames(Rnew) <- colnames(x)
+  colnames(Rnew) <- paste(colnames(x), "", sep="")
+	## remove upper triangle
+	Rnew <- as.data.frame(Rnew)
+  ## remove last column and return the matrix (which is now a data frame)
+  Rnew <- cbind(Rnew[1:length(Rnew)-1])
+  return(Rnew)
+}
+corr.final <- corstarsl(data.corr)
+
+flexcorrel <- FlexTable(corr.final,  header.columns = TRUE, add.rownames = TRUE,
+	body.cell.props = cellProperties(),
+	body.par.props = parProperties(padding= 0),
+	body.text.props = textProperties(),
+	header.cell.props = cellProperties(),
+	header.par.props = parProperties(padding = 0),
+	header.text.props = textProperties(font.weight = "bold"))
+
+###############NEW SECTION - Financial
+#Median Plots
+medsig <- median(sigma)
+medgam <- median(gamma)
+meddelt <- median(delta)
+meansig <- mean(sigma)
+meangam <- mean(gamma)
+meandelt <- mean(delta)
+p <- c(0, .10, .25, .5, .75, .9, 1)
+x <- c(0, 100, 500, 2500, 10000)
+
+#Create Mean + Median Utility Curvature Tables
+data.utmed <- data.table(x)
+data.utmed$y <- x**medsig
+data.utmean <- data.table(x)
+data.utmean$y <- x**meansig
+
+#Create Mean + Median Probability Weighting Tables
+data.wpmed <- data.table(p)
+data.wpmed$wp <- meddelt*p**medgam/(meddelt*p**medgam + (1-p)**medgam)
+data.wpmean <- data.table(p)
+data.wpmean$wp <- meandelt*p**meangam/(meandelt*p**meangam + (1-p)**meangam)
+
+#Plots
+util.plot <- ggplot(data.utmed, aes(x=x, y=y)) +
+	geom_line(aes(color='MedianData'), size=1) +
+  geom_line(data=data.utmean, aes(color='MeanData'),size=1) +
+	geom_point() +
+	geom_point(data=data.utmean)+
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Utility Curve') +
+	labs(x= 'Probability') +
+	labs(y='Decision Weight')+
+	scale_colour_manual(name="Line Color",
+  values=c(MedianData="blue", MeanData="red"))
+
+wp.plot <- ggplot(data.wpmed, aes(x=p, y=wp)) +
+	geom_line(aes(color='MedianData'), size=1) +
+  	geom_line(data=data.wpmean, aes(color='MeanData'),size=1) +
+	geom_point() +
+	geom_point(data=data.wpmean)+
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Probability Weighting Curve')+
+	labs(x= 'Probability') +
+	labs(y='Decision Weight')+
+	scale_colour_manual(name="Line Color",
+    	values=c(MedianData="blue", MeanData="red"))
+
+#Smooth Plots
+ut_spline_med <- as.data.frame(spline(data.utmed$x, data.utmed$y))
+ut_spline_mean <- as.data.frame(spline(data.utmean$x, data.utmean$y))
+util.plot.smooth <- ggplot(data=ut_spline_med, aes(x=x, y=y)) +
+	geom_line(aes(color='MedianData'), size=1)+
+	geom_line(data=ut_spline_mean, aes(color='MeanData'),size=1) +
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Utility Curve Smoothed') +
+	labs(x= 'Dollars') +
+	labs(y='Utility')+
+	scale_colour_manual(name="Line Color",
+  values=c(MedianData="blue", MeanData="red"))
+
+wp_spline_med <- as.data.frame(spline(data.wpmed$p, data.wpmed$wp))
+wp_spline_mean <- as.data.frame(spline(data.wpmean$p, data.wpmean$wp))
+wp.plot.smooth <- ggplot(data=wp_spline_med, aes(x=x, y=y)) +
+	geom_line(aes(color='MedianData'), size=1)+
+	geom_line(data=wp_spline_mean, aes(color='MeanData'),size=1) +
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Probability Weighting Curve Smoothed') +
+	labs(x= 'Probability') +
+	labs(y='Decision Weight')+
+	scale_colour_manual(name="Line Color",
+  values=c(MedianData="blue", MeanData="red"))
+
+
+###############NEW SECTION - Medical
+#Median Plots
+mmedsig <- median(msigma)
+mmedgam <- median(mgamma)
+mmeddelt <- median(mdelta)
+mmeansig <- mean(msigma)
+mmeangam <- mean(mgamma)
+mmeandelt <- mean(mdelta)
+p <- c(0, .10, .25, .5, .75, .9, 1)
+x <- c(0, 100, 500, 2500, 10000)
+
+#Create Mean + Median Utility Curvature Tables
+data.mutmed <- data.table(x)
+data.mutmed$y <- x**mmedsig
+data.mutmean <- data.table(x)
+data.mutmean$y <- x**mmeansig
+
+#Create Mean + Median Probability Weighting Tables
+data.mwpmed <- data.table(p)
+data.mwpmed$wp <- mmeddelt*p**mmedgam/(mmeddelt*p**mmedgam + (1-p)**mmedgam)
+data.mwpmean <- data.table(p)
+data.mwpmean$wp <- mmeandelt*p**mmeangam/(mmeandelt*p**mmeangam + (1-p)**mmeangam)
+
+#Plots
+mutil.plot <- ggplot(data.mutmed, aes(x=x, y=y)) +
+	geom_line(aes(color='MedianData'), size=1) +
+  geom_line(data=data.mutmean, aes(color='MeanData'),size=1) +
+	geom_point() +
+	geom_point(data=data.mutmean)+
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Medical Utility Curve') +
+	labs(x= 'Probability') +
+	labs(y='Decision Weight')+
+	scale_colour_manual(name="Line Color",
+  values=c(MedianData="blue", MeanData="red"))
+
+mwp.plot <- ggplot(data.mwpmed, aes(x=p, y=wp)) +
+	geom_line(aes(color='MedianData'), size=1) +
+	geom_line(data=data.mwpmean, aes(color='MeanData'),size=1) +
+	geom_point() +
+	geom_point(data=data.mwpmean)+
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Medical Probability Weighting Curve')+
+	labs(x= 'Probability') +
+	labs(y='Decision Weight')+
+	scale_colour_manual(name="Line Color",
+    	values=c(MedianData="blue", MeanData="red"))
+
+#Smooth Plots
+mut_spline_med <- as.data.frame(spline(data.mutmed$x, data.mutmed$y))
+mut_spline_mean <- as.data.frame(spline(data.mutmean$x, data.mutmean$y))
+mutil.plot.smooth <- ggplot(data=mut_spline_med, aes(x=x, y=y)) +
+	geom_line(aes(color='MedianData'), size=1)+
+	geom_line(data=mut_spline_mean, aes(color='MeanData'),size=1) +
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Medical Utility Curve Smoothed') +
+	labs(x= 'Dollars') +
+	labs(y='Utility')+
+	scale_colour_manual(name="Line Color",
+  values=c(MedianData="blue", MeanData="red"))
+
+mwp_spline_med <- as.data.frame(spline(data.mwpmed$p, data.mwpmed$wp))
+mwp_spline_mean <- as.data.frame(spline(data.mwpmean$p, data.mwpmean$wp))
+mwp.plot.smooth <- ggplot(data=mwp_spline_med, aes(x=x, y=y)) +
+	geom_line(aes(color='MedianData'), size=1)+
+	geom_line(data=mwp_spline_mean, aes(color='MeanData'),size=1) +
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Medical Probability Weighting Curve Smoothed') +
+	labs(x= 'Probability') +
+	labs(y='Decision Weight')+
+	scale_colour_manual(name="Line Color",
+  values=c(MedianData="blue", MeanData="red"))
+
+###############NEW SECTION - EXPORTING OUTPUT
+#Write cleaned excel file
+setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
+write.csv(data.clean6, file="Qualtric_TestRun.csv")
+
+#Write Correl
+setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
+write.csv(corr.final, file="Corral_TestRun.csv")
+
+#Create word doc of summary stats + histograms + Med Plots
+doc <- docx()
+doc <- addTitle(doc=doc, 'Summary Statisitcs and Histograms',leve=1)
+doc <- addFlexTable(doc=doc, flexstatsF,
+	par.properties = parProperties(text.align = "center"))
+doc <- addFlexTable(doc=doc, flexstatsM,
+	par.properties = parProperties(text.align = "center"))
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.sigma, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.gamma, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.delta, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.la, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.msigma, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.mgamma, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.mdelta, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.mla, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.firthR, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addFlexTable(doc=doc, flexcorrel,
+	par.properties = parProperties(text.align = "center"))
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = util.plot, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = util.plot.smooth, 	vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = wp.plot, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = wp.plot.smooth, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+	doc <- addPlot(doc = doc, fun = print, x = mutil.plot, vector.graphic = T,
+		fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = mutil.plot.smooth, 	vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = mwp.plot, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = mwp.plot.smooth, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+
+writeDoc(doc, file = "C:/Users/andre/OneDrive/Documents/Research/Qualtrics/Summary_TestRun.docx" )
+
+#Create powerpoint of summary stats + histograms + Med Plots
+pdoc <- pptx(template="C:/Users/andre/OneDrive/Documents/Research/Presentation_Template.pptx")
+pdoc <- addSlide(pdoc, "Title Slide")
+pdoc <- addTitle(pdoc, "Prospect Theory / Decision Making")
+pdoc <- addSubtitle(pdoc, "Something About Money")
+pdoc <- addSlide(pdoc, "Comparison")
+pdoc <- addTitle(pdoc, "Summary Statistics")
+pdoc <- addParagraph(pdoc, "Financial Summary Stats")
+pdoc <- addFlexTable(pdoc, flexstatsF,
+	par.properties = parProperties(text.align = "center"))
+pdoc <- addParagraph(pdoc, "Medical Summary Stats")
+pdoc <- addFlexTable(pdoc, flexstatsM,
+	par.properties = parProperties(text.align = "center"))
+pdoc <- addSlide(pdoc, "Two Content")
+pdoc <- addTitle(pdoc, "Sigma Histograms")
+pdoc <- addPlot(pdoc, fun = print, x = hist.sigma, vector.graphic = T,
+	fontname_serif = "Arial", width = 5, height = 3, editable = TRUE)
+pdoc <- addPlot(pdoc, fun = print, x = hist.msigma, vector.graphic = T,
+	fontname_serif = "Arial", width = 5, height = 3, editable = TRUE)
+pdoc <- addSlide(pdoc, "Two Content")
+pdoc <- addTitle(pdoc, "Gamma Histograms")
+pdoc <- addPlot(pdoc, fun = print, x = hist.gamma, vector.graphic = T,
+	fontname_serif = "Arial", width = 5, height = 3, editable = TRUE)
+pdoc <- addPlot(pdoc, fun = print, x = hist.mgamma, vector.graphic = T,
+	fontname_serif = "Arial", width = 5, height = 3, editable = TRUE)
+pdoc <- addSlide(pdoc, "Two Content")
+pdoc <- addTitle(pdoc, "Delta Histograms")
+pdoc <- addPlot(pdoc, fun = print, x = hist.delta, vector.graphic = T,
+	fontname_serif = "Arial", width = 5, height = 3, editable = TRUE)
+pdoc <- addPlot(pdoc, fun = print, x = hist.mdelta, vector.graphic = T,
+	fontname_serif = "Arial", width = 5, height = 3, editable = TRUE)
+pdoc <- addSlide(pdoc, "Two Content")
+pdoc <- addTitle(pdoc, "Loss Aversion Histograms")
+pdoc <- addPlot(pdoc, fun = print, x = hist.la, vector.graphic = T,
+	fontname_serif = "Arial", width = 5, height = 3, editable = TRUE)
+pdoc <- addPlot(pdoc, fun = print, x = hist.mla, vector.graphic = T,
+	fontname_serif = "Arial", width = 5, height = 3, editable = TRUE)
+pdoc <- addSlide(pdoc, "Title and Content")
+pdoc <- addTitle(pdoc, "Firth Loss Aversion Histogram")
+pdoc <- addPlot(pdoc, fun = print, x = hist.firthR, vector.graphic = T,
+	fontname_serif = "Arial", width = 5, height = 3, editable = TRUE)
+pdoc <- addSlide(pdoc, "Two Content")
+pdoc <- addTitle(pdoc, "Utility Plots")
+pdoc <- addPlot(pdoc, fun = print, x = util.plot, vector.graphic = T,
+	fontname_serif = "Arial", width = 5, height = 3, editable = TRUE)
+pdoc <- addPlot(pdoc, fun = print, x = mutil.plot, vector.graphic = T,
+	fontname_serif = "Arial", width = 5, height = 3, editable = TRUE)
+pdoc <- addSlide(pdoc, "Two Content")
+pdoc <- addTitle(pdoc, "Probability Weighting Plots")
+pdoc <- addPlot(pdoc, fun = print, x = wp.plot.smooth, vector.graphic = T,
+	fontname_serif = "Arial", width = 5, height = 3, editable = TRUE)
+pdoc <- addPlot(pdoc, fun = print, x = mwp.plot.smooth, vector.graphic = T,
+	fontname_serif = "Arial", width = 5, height = 3, editable = TRUE)
+pdoc <- addSlide(pdoc, "Title and Content")
+pdoc <- addTitle(pdoc, "Correlations")
+pdoc <- addFlexTable(pdoc, flexcorrel,
+	par.properties = parProperties(text.align = "center"))
+
+writeDoc(pdoc, file = "C:/Users/andre/OneDrive/Documents/Research/Qualtrics/Summary_TestRun.pptx" )
 
