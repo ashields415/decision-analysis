@@ -1,0 +1,377 @@
+#Load relevant libraries
+install.packages('Rcpp', dependencies=TRUE)
+install.packages('rJava', dependencies=TRUE)
+install.packages('ReporteRs', dependencies=TRUE)
+install.packages('ggplot2', dependencies=TRUE)
+install.packages('plyr', dependencies=TRUE)
+install.packages('reshape2', dependencies=TRUE)
+install.packages('logistf', dependencies=TRUE)
+install.packages('psych', dependencies=TRUE)
+install.packages('data.table', dependencies=TRUE)
+install.packages('fBasics', dependencies=TRUE)
+install.packages('xtable', dependencies=TRUE)
+install.packages('Hmisc', dependencies=TRUE)
+install.packages('rmarkdown', dependencies=TRUE)
+
+
+#Pull relevant libraries
+library(plyr)
+library(reshape2)
+library(logistf)
+library(psych)
+library(data.table)
+library(ggplot2)
+library(rJava)
+library(ReporteRs)
+library(fBasics)
+library(xtable)
+library(Hmisc)
+library(splines2)
+library(rmarkdown)
+
+
+#Load file
+fileload <- read.csv('C:/Users/andre/Desktop/Qualtrics_Test.csv', header = TRUE, sep = ",")
+data.whole <- fileload
+
+#Clean
+keepvar <- c('Participant', 'Duration', 'Gender', 'Age', 'High_ed', 'piratio',
+	'pi75', 'sigma', 'la.v1', 'camSP', 'Lottery', 'Invest', 'Inflation', 'Travel_Ins',
+	'Travel_Vac', 'Vac', 'Rec_Risk', 'Enjoy_Risk', 'Pain_Loss', 'Risk_Averse',
+	'Afraid_Loss', 'Round1.1','Round1.2','Round1.3','Round1.4','Round1.5',
+	'Round1.6','Round1.7','Round1.8','Round1.9','Round1.10','Round1.11',
+	'Round1.12','Round1.13','Round1.14','Round1.15','Round1.16','Round2.1',
+	'Round2.2','Round2.3','Round2.4','Round2.5','Round2.6','Round2.7',
+	'Round2.8','Round2.9','Round2.10','Round2.11','Round2.12','Round2.13',
+	'Round2.14','Round2.15','Round2.16')
+data.clean <- data.whole[keepvar]
+
+#DeltaGamma
+vardg <- c('Participant', 'piratio', 'pi75')
+data.dg <- data.clean[vardg]
+
+#Matrix
+varmat <- c('Participant', 'Round1.1','Round1.2','Round1.3','Round1.4',
+	'Round1.5','Round1.6','Round1.7','Round1.8','Round1.9','Round1.10',
+	'Round1.11','Round1.12','Round1.13','Round1.14','Round1.15','Round1.16',
+	'Round2.1','Round2.2','Round2.3','Round2.4','Round2.5','Round2.6',
+	'Round2.7','Round2.8','Round2.9','Round2.10','Round2.11','Round2.12',
+	'Round2.13','Round2.14','Round2.15','Round2.16')
+data.mat <- data.clean[varmat]
+
+
+###############NEW SECTION
+#Perform optim function to find delta/gamma
+attach(data.dg)
+data.dg$p.25 <- 0.25
+data.dg$p.75 <- 0.75
+data.dg$pi.25 <- piratio*pi75
+data.dg <- rename(data.dg, c('pi75'='pi.75'))
+rdata.dg <- reshape(data.dg, direction='long',
+	varying=c('pi.25', 'pi.75', 'p.25', 'p.75'))
+rdata.dg <- rdata.dg[order(rdata.dg$Participant),]
+optim.dg <- ddply(rdata.dg, .(Participant), plyr::summarize,
+	gamma = optim(c(1,1), function(par)
+	sum((pi -par[2]*p**par[1]/(par[2]*p**par[1] + (1-p)**par[1]))**2),
+	method= 'BFGS')$par[1],
+	delta = optim(c(1,1), function(par)
+	sum((pi -par[2]*p**par[1]/(par[2]*p**par[1] + (1-p)**par[1]))**2),
+	method= 'BFGS')$par[2])
+data.clean2 <- merge(data.clean, optim.dg, by='Participant', all.x = TRUE)
+detach(data.dg)
+
+
+###############NEW SECTION
+#Perform optim function to find Camerer LA parameters
+attach(data.clean2)
+varcm <- c('Participant', 'camSP', 'sigma', 'gamma', 'delta')
+data.ca <- data.clean2[varcm]
+data.ca$wp_50 <- delta*0.5**gamma/(delta*0.5**gamma + (1-0.5)**gamma)
+camSP <- (1:12)
+x1 <- c(25, 16, 8, 4, 1, 1, 1, 1, 1, 1, 1, 1)
+x2 <- 30
+x2 <- rep(x2, times=12)
+y1 <- c(-4, -4, -4, -4, -6, -6, -6, -7, -8, -8, -8, -8)
+y2 <- c(-21, -21, -21, -21, -21, -18, -15, -15, -14, -13, -12, -11)
+camla.data <- data.frame(camSP, x1, y1, x2, y2)
+data2.ca <- merge(data.ca, camla.data, by='camSP')
+camla_par <- ddply(data2.ca, .(Participant), plyr::summarize,
+	camla = optim(c(1), function(par)
+	sum(((-par*(-y1)**sigma + wp_50*(x1**sigma + par*(-y1)**sigma)) -
+	(-par*(-y2)**sigma + wp_50*(x2**sigma + par*(-y2)**sigma)))**2),
+	method= 'BFGS')$par[1])
+data.clean3 <- merge(data.clean2, camla_par, by='Participant', all.x = TRUE)
+detach(data.clean2)
+
+
+###############NEW SECTION
+#Perform transformations on
+attach(data.mat)
+data.mat$M <- ifelse(is.na(data.mat$Round1.1), 2, 1)
+tdata.mat <- t(data.mat)
+mtdata.mat <- melt(tdata.mat, id=c('id', 'time'))
+mtdata.mat <- rename(mtdata.mat, c('Var1'='Round', 'Var2'='Participant',
+	'value'='Accept'))
+mtdata2.mat <- mtdata.mat[!((mtdata.mat$Round=='M') |
+	(mtdata.mat$Round=='Participant') ), ]
+mtdata2.mat <- mtdata2.mat[!is.na(mtdata2.mat$Accept),]
+labs <- c('Round1.1','Round1.2','Round1.3','Round1.4',
+	'Round1.5','Round1.6','Round1.7','Round1.8','Round1.9','Round1.10',
+	'Round1.11','Round1.12','Round1.13','Round1.14','Round1.15','Round1.16')
+mtdata2.mat$Matrix <- ifelse(mtdata2.mat$Round==labs, 1, 2)
+detach(data.mat)
+attach(mtdata2.mat)
+Round <- c('Round1.1','Round1.2','Round1.3','Round1.4',
+	'Round1.5','Round1.6','Round1.7','Round1.8','Round1.9','Round1.10',
+	'Round1.11','Round1.12','Round1.13','Round1.14','Round1.15','Round1.16',
+	'Round2.1','Round2.2','Round2.3','Round2.4','Round2.5',
+	'Round2.6','Round2.7','Round2.8','Round2.9','Round2.10','Round2.11',
+	'Round2.12','Round2.13','Round2.14','Round2.15','Round2.16')
+Gain <- c(10, 10, 10, 10, 20, 20, 20, 20, 30, 30, 30, 30, 40, 40, 40, 40)
+Gain <- rep(Gain, times=2)
+Loss <- c(-10, -20, -30, -40, -10, -20, -30, -40, -10, -20, -30, -40,
+	-10, -20, -30, -40, -5, -10, -15, -20, -5, -10, -15, -20, -5, -10,
+	-15, -20, -5, -10, -15, -20)
+matrix.data <- data.frame(Round, Gain, Loss)
+mtdata2.mat <- merge(mtdata2.mat, matrix.data, by='Round', all.x = TRUE)
+mtdata2.mat <- mtdata2.mat[order(mtdata2.mat$Participant, mtdata2.mat$Round),]
+
+#Run Firth logistic regression to find Firth Ratios, etc
+firth <- ddply(mtdata2.mat, .(Participant), plyr::summarize,
+	Int_Firth=logistf(Accept ~ Gain + Loss)$coef[1],
+	Gain_Firth=logistf(Accept ~ Gain + Loss)$coef[2],
+	Loss_Firth=logistf(Accept ~ Gain + Loss)$coef[3])
+data.clean4 <- merge(data.clean3, firth, by='Participant', all.x = TRUE)
+detach(mtdata2.mat)
+attach(data.clean4)
+data.clean4$Ratio_Firth <- Loss_Firth / Gain_Firth
+detach(data.clean4)
+data.clean5 <- setDT(data.clean4)[ ,(Round):=NULL]
+
+
+###############NEW SECTION
+#Create classification of 'extreme' labels and data sets
+attach(data.clean5)
+data.clean5$extrQ_all	<- ifelse(piratio==.1 & sigma==0.5 & pi75==0.2 & la.v1==5.01, '1', '0')
+data.clean5$extrQ_14	<- ifelse(piratio==.1 & la.v1==5.01, '1', '0')
+data.clean5$extrR_all	<- ifelse(piratio==.8 & sigma==1.4 & pi75==0.8 & la.v1==.25, '1', '0')
+data.clean5$extrR_14	<- ifelse(piratio==.8 & la.v1==.25, '1', '0')
+
+data.extr1 <- data.clean5[!(extrQ_all==1 | extrR_all==1)]
+data.extr2 <- data.extr1[!(extrQ_14==1 | extrR_14==1)]
+
+###############NEW SECTION
+#compute summary stats and plot histograms of key parameters
+attach(data.clean5)
+setDF(data.clean5)
+sumvars <- c('sigma','gamma','delta','la.v1','Ratio_Firth')
+data.clean6 <- data.clean5[sumvars]
+sumstats <- basicStats(data.clean6)[c("Mean", "Median", "Stdev",
+	"SE Mean", "nobs"),]
+flexstats <- FlexTable(sumstats,  header.columns = TRUE, add.rownames = TRUE,
+	body.cell.props = cellProperties(),
+	body.par.props = parProperties(padding= 0),
+	body.text.props = textProperties(),
+	header.cell.props = cellProperties(),
+	header.par.props = parProperties(padding = 0),
+	header.text.props = textProperties(font.weight = "bold"))
+flexstats <- setZebraStyle(flexstats, odd = '#eeeeee', even = 'white')
+hist.sigma <- ggplot(data=data.clean5, aes(x=data.clean5$sigma)) +
+	geom_histogram(breaks=seq(.2, 1.5, by=.1),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram Sigma", x="Sigma", y="Count") +
+	xlim(c(.2,1.5)) +
+	scale_x_continuous(breaks = round(seq(min(sigma), max(sigma), by = 0.1),1))
+hist.gamma <- ggplot(data=data.clean5, aes(x=data.clean5$gamma)) +
+	geom_histogram(breaks=seq(min(gamma), max(gamma), by=.1),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram Gamma", x="Gamma", y="Count") +
+	xlim(c(min(gamma),max(gamma))) +
+	scale_x_continuous(breaks = round(seq(min(gamma), max(gamma), by = 0.1),1))
+hist.delta <- ggplot(data=data.clean5, aes(x=data.clean5$delta)) +
+	geom_histogram(breaks=seq(min(delta), max(delta), by=.1),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram Delta", x="Delta", y="Count") +
+	xlim(c(min(delta),max(delta))) +
+	scale_x_continuous(breaks = round(seq(min(delta), max(delta), by = 0.1),1))
+hist.la <- ggplot(data=data.clean5, aes(x=data.clean5$la.v1)) +
+	geom_histogram(breaks=seq(.25, 5.25, by=.25),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram LA-V1", x="LA-V1", y="Count") +
+	xlim(c(.25, 5.25)) +
+	scale_x_continuous(breaks = round(seq(.25, 5.25, by = 0.25),1))
+hist.firthR <- ggplot(data=data.clean5, aes(x=data.clean5$Ratio_Firth)) +
+	geom_histogram(breaks=seq(.25, 5.25, by=.25),
+                 col="blue",
+                 fill="red",
+                 alpha = .5) +
+	labs(title="Histogram Firth Ratio", x="Firth Ratio", y="Count") +
+	xlim(c(.25,5.25)) +
+	scale_x_continuous(breaks = round(seq(.25, 5.25, by = 0.25),1))
+
+
+###############NEW SECTION
+#Correlation Tables
+data.corr <- data.clean5[c("sigma", "gamma", "delta", "la.v1", 'Int_Firth', 'Gain_Firth',
+	'Loss_Firth', 'Ratio_Firth', 'camla', 'Gender', 'Age', 'High_ed',
+	'Duration', "Lottery", "Invest", "Inflation", "Travel_Ins", "Travel_Vac",
+	"Vac", "Rec_Risk", "Enjoy_Risk", "Pain_Loss", "Risk_Averse", "Afraid_Loss")]
+detach(data.clean5)
+attach(data.corr)
+corstarsl <- function(x){
+  require(Hmisc)
+  x <- as.matrix(x)
+  R <- rcorr(x)$r
+  p <- rcorr(x)$P
+  ## define notions for significance levels; spacing is important.
+  mystars <- ifelse(p < .001, "***", ifelse(p < .01, "** ", ifelse(p < .05, "* ", " ")))
+  ## trunctuate the matrix that holds the correlations to two decimal
+  R <- format(round(cbind(rep(-1.11, ncol(x)), R), 3))[,-1]
+    ## build a new matrix that includes the correlations with their apropriate stars
+  Rnew <- matrix(paste(R, mystars, sep=""), ncol=ncol(x))
+  diag(Rnew) <- paste(diag(R), " ", sep="")
+  rownames(Rnew) <- colnames(x)
+  colnames(Rnew) <- paste(colnames(x), "", sep="")
+	## remove upper triangle
+	Rnew <- as.data.frame(Rnew)
+  ## remove last column and return the matrix (which is now a data frame)
+  Rnew <- cbind(Rnew[1:length(Rnew)-1])
+  return(Rnew)
+}
+corr.final <- corstarsl(data.corr)
+
+flexcorrel <- FlexTable(corr.final,  header.columns = TRUE, add.rownames = TRUE,
+	body.cell.props = cellProperties(),
+	body.par.props = parProperties(padding= 0),
+	body.text.props = textProperties(),
+	header.cell.props = cellProperties(),
+	header.par.props = parProperties(padding = 0),
+	header.text.props = textProperties(font.weight = "bold"))
+
+
+###############NEW SECTION
+#Median Plots
+medsig <- median(sigma)
+medgam <- median(gamma)
+meddelt <- median(delta)
+meansig <- mean(sigma)
+meangam <- mean(gamma)
+meandelt <- mean(delta)
+p <- c(0, .10, .25, .5, .75, .9, 1)
+x <- c(0, 100, 500, 2500, 10000)
+
+#Create Mean + Median Utility Curvature Tables
+data.utmed <- data.table(x)
+data.utmed$y <- x**medsig
+data.utmean <- data.table(x)
+data.utmean$y <- x**meansig
+
+#Create Mean + Median Probability Weighting Tables
+data.wpmed <- data.table(p)
+data.wpmed$wp <- meddelt*p**medgam/(meddelt*p**medgam + (1-p)**medgam)
+data.wpmean <- data.table(p)
+data.wpmean$wp <- meandelt*p**meangam/(meandelt*p**meangam + (1-p)**meangam)
+
+#Plots
+util.plot <- ggplot(data.utmed, aes(x=x, y=y)) +
+	geom_line(aes(color='MedianData'), size=1) +
+  geom_line(data=data.utmean, aes(color='MeanData'),size=1) +
+	geom_point() +
+	geom_point(data=data.utmean)+
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Utility Curve') +
+	labs(x= 'Probability') +
+	labs(y='Decision Weight')+
+	scale_colour_manual(name="Line Color",
+  values=c(MedianData="blue", MeanData="red"))
+
+wp.plot <- ggplot(data.wpmed, aes(x=p, y=wp)) +
+	geom_line(aes(color='MedianData'), size=1) +
+  	geom_line(data=data.wpmean, aes(color='MeanData'),size=1) +
+	geom_point() +
+	geom_point(data=data.wpmean)+
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Probability Weighting Curve')+
+	labs(x= 'Probability') +
+	labs(y='Decision Weight')+
+	scale_colour_manual(name="Line Color",
+    	values=c(MedianData="blue", MeanData="red"))
+
+#Smooth Plots
+ut_spline_med <- as.data.frame(spline(data.utmed$x, data.utmed$y))
+ut_spline_mean <- as.data.frame(spline(data.utmean$x, data.utmean$y))
+util.plot.smooth <- ggplot(data=ut_spline_med, aes(x=x, y=y)) +
+	geom_line(aes(color='MedianData'), size=1)+
+	geom_line(data=ut_spline_mean, aes(color='MeanData'),size=1) +
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Utility Curve Smoothed') +
+	labs(x= 'Dollars') +
+	labs(y='Utility')+
+	scale_colour_manual(name="Line Color",
+  values=c(MedianData="blue", MeanData="red"))
+
+wp_spline_med <- as.data.frame(spline(data.wpmed$p, data.wpmed$wp))
+wp_spline_mean <- as.data.frame(spline(data.wpmean$p, data.wpmean$wp))
+wp.plot.smooth <- ggplot(data=wp_spline_med, aes(x=x, y=y)) +
+	geom_line(aes(color='MedianData'), size=1)+
+	geom_line(data=wp_spline_mean, aes(color='MeanData'),size=1) +
+	geom_abline(intercept = 0, slope = 1)+
+	ggtitle('Probability Weighting Curve Smoothed') +
+	labs(x= 'Probability') +
+	labs(y='Decision Weight')+
+	scale_colour_manual(name="Line Color",
+  values=c(MedianData="blue", MeanData="red"))
+
+###############NEW SECTION - EXPORTING OUTPUT
+#Write cleaned excel file
+setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
+write.csv(data.clean5, file="Qualtric_Test1.csv")
+
+#Write Correl
+setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
+write.csv(corr.final, file="Corral_Test.csv")
+
+#Create word doc of summary stats + histograms + Med Plots
+doc <- docx()
+doc <- addTitle(doc=doc, 'Summary Statisitcs and Histograms',leve=1)
+doc <- addFlexTable(doc=doc, flexstats,
+	par.properties = parProperties(text.align = "center"))
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.sigma, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.gamma, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.delta, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.la, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = hist.firthR, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addFlexTable(doc=doc, flexcorrel,
+	par.properties = parProperties(text.align = "center"))
+	doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = util.plot, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = util.plot.smooth, 	vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = wp.plot, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+doc <- addPageBreak(doc)
+doc <- addPlot(doc = doc, fun = print, x = wp.plot.smooth, vector.graphic = T,
+	fontname_serif = "Arial", width = 6, height = 6, editable = TRUE)
+writeDoc(doc, file = "C:/Users/andre/OneDrive/Documents/Research/Qualtrics/Summary_Test.docx" )
