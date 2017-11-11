@@ -147,6 +147,9 @@ attach(data.clean4)
 data.clean4$Ratio_Firth <- Loss_Firth / Gain_Firth
 detach(data.clean4)
 data.clean5 <- setDT(data.clean4)[ ,(Round):=NULL]
+setwd('C:/Users/andre/OneDrive/Documents/Research/Qualtrics')
+write.csv(data.clean5, file="Qualtric_TEST.csv")
+
 
 
 ###############NEW SECTION
@@ -235,7 +238,7 @@ corstarsl <- function(x){
   mystars <- ifelse(p < .001, "***", ifelse(p < .01, "** ", ifelse(p < .05, "* ", " ")))
   ## trunctuate the matrix that holds the correlations to two decimal
   R <- format(round(cbind(rep(-1.11, ncol(x)), R), 3))[,-1]
-    ## build a new matrix that includes the correlations with their apropriate stars
+  ## build a new matrix that includes the correlations with their apropriate stars
   Rnew <- matrix(paste(R, mystars, sep=""), ncol=ncol(x))
   diag(Rnew) <- paste(diag(R), " ", sep="")
   rownames(Rnew) <- colnames(x)
@@ -309,12 +312,12 @@ wp.plot <- ggplot(data.wpmed, aes(x=p, y=wp)) +
 ut_spline_med <- as.data.frame(spline(data.utmed$x, data.utmed$y))
 ut_spline_mean <- as.data.frame(spline(data.utmean$x, data.utmean$y))
 util.plot.smooth <- ggplot(data=ut_spline_med, aes(x=x, y=y)) +
-	geom_line(aes(color='MedianData'), size=1)+
+    geom_line(aes(color='MedianData'), size=1)+
 	geom_line(data=ut_spline_mean, aes(color='MeanData'),size=1) +
 	geom_abline(intercept = 0, slope = 1)+
 	ggtitle('Utility Curve Smoothed') +
 	labs(x= 'Dollars') +
-	labs(y='Utility')+
+	labs(y='utility')+
 	scale_colour_manual(name="Line Color",
   values=c(MedianData="blue", MeanData="red"))
 
